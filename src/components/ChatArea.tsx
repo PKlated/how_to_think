@@ -1,97 +1,270 @@
-import { Link } from '@tanstack/react-router'
-import ThemeToggle from './ThemeToggle'
+import React, { useState, useRef, useEffect } from "react";
 
-export default function Header() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 backdrop-blur-lg">
-      <nav className="page-wrap flex flex-wrap items-center gap-x-3 gap-y-2 py-3 sm:py-4">
-        <h2 className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-sm text-[var(--sea-ink)] no-underline shadow-[0_8px_24px_rgba(30,90,72,0.08)] sm:px-4 sm:py-2"
-          >
-            <span className="h-2 w-2 rounded-full bg-[linear-gradient(90deg,#56c6be,#7ed3bf)]" />
-            TanStack Start
-          </Link>
-        </h2>
-
-        <div className="ml-auto flex items-center gap-1.5 sm:ml-0 sm:gap-2">
-          <a
-            href="https://x.com/tan_stack"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden rounded-xl p-2 text-[var(--sea-ink-soft)] transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)] sm:block"
-          >
-            <span className="sr-only">Follow TanStack on X</span>
-            <svg viewBox="0 0 16 16" aria-hidden="true" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M12.6 1h2.2L10 6.48 15.64 15h-4.41L7.78 9.82 3.23 15H1l5.14-5.84L.72 1h4.52l3.12 4.73L12.6 1zm-.77 12.67h1.22L4.57 2.26H3.26l8.57 11.41z"
-              />
-            </svg>
-          </a>
-          <a
-            href="https://github.com/TanStack"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden rounded-xl p-2 text-[var(--sea-ink-soft)] transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)] sm:block"
-          >
-            <span className="sr-only">Go to TanStack GitHub</span>
-            <svg viewBox="0 0 16 16" aria-hidden="true" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-              />
-            </svg>
-          </a>
-
-          <ThemeToggle />
-        </div>
-
-        <div className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-2 sm:w-auto sm:flex-nowrap sm:pb-0">
-          <Link
-            to="/"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Home
-          </Link>
-          <Link
-            to="/about"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            About
-          </Link>
-          <a
-            href="https://tanstack.com/start/latest/docs/framework/react/overview"
-            className="nav-link"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Docs
-          </a>
-          <details className="relative w-full sm:w-auto">
-            <summary className="nav-link list-none cursor-pointer">
-              Demos
-            </summary>
-            <div className="mt-2 min-w-56 rounded-xl border border-[var(--line)] bg-[var(--header-bg)] p-2 shadow-lg sm:absolute sm:right-0">
-              <a
-                href="/demo/tanstack-query"
-                className="block rounded-lg px-3 py-2 text-sm text-[var(--sea-ink-soft)] no-underline transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]"
-              >
-                TanStack Query
-              </a>
-              <a
-                href="/demo/trpc-todo"
-                className="block rounded-lg px-3 py-2 text-sm text-[var(--sea-ink-soft)] no-underline transition hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]"
-              >
-                tRPC Todo
-              </a>
-            </div>
-          </details>
-        </div>
-      </nav>
-    </header>
-  )
+export interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
+
+interface ChatAreaProps {
+  messages: Message[];
+  isLoading: boolean;
+  onSendMessage: (content: string) => void;
+}
+
+const TypingIndicator: React.FC = () => (
+  <div className="flex items-end gap-3 mb-6">
+    <div
+      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+      style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+      </svg>
+    </div>
+    <div
+      className="px-4 py-3 rounded-2xl rounded-bl-sm"
+      style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(10px)" }}
+    >
+      <div className="flex gap-1.5 items-center h-4">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: "#94a3b8",
+              animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
+  const isUser = message.role === "user";
+
+  return (
+    <div
+      className={`flex items-end gap-3 mb-4 ${isUser ? "flex-row-reverse" : ""}`}
+      style={{ animation: "fadeSlideIn 0.25s ease-out" }}
+    >
+      {/* Avatar */}
+      {!isUser && (
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+          </svg>
+        </div>
+      )}
+
+      <div
+        className={`max-w-[72%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+          isUser ? "rounded-br-sm" : "rounded-bl-sm"
+        }`}
+        style={{
+          background: isUser
+            ? "linear-gradient(135deg, #3b82f6, #6366f1)"
+            : "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(10px)",
+          color: isUser ? "#fff" : "#1e293b",
+          boxShadow: isUser
+            ? "0 4px 15px rgba(99,102,241,0.25)"
+            : "0 2px 10px rgba(0,0,0,0.06)",
+          border: isUser ? "none" : "1px solid rgba(255,255,255,0.8)",
+        }}
+      >
+        <p style={{ whiteSpace: "pre-wrap" }}>{message.content}</p>
+        <p
+          className="text-xs mt-1.5"
+          style={{ opacity: 0.55 }}
+        >
+          {message.timestamp.toLocaleTimeString("th-TH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage }) => {
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isEmpty = messages.length === 0;
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Auto-resize
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+    }
+  };
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed || isLoading) return;
+    onSendMessage(trimmed);
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const suggestions = [
+    "สรุปเนื้อหาให้หน่อย",
+    "ช่วยเขียนโค้ดให้ได้เลย",
+    "อธิบายให้เข้าใจง่าย",
+    "วิเคราะห์ข้อมูลนี้",
+  ];
+
+  return (
+    <main
+      className="flex-1 flex flex-col h-full overflow-hidden"
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+    >
+      {/* Messages or Empty state */}
+      <div className="flex-1 overflow-y-auto px-6 py-6" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.1) transparent" }}>
+        {isEmpty ? (
+          <div
+            className="flex flex-col items-center justify-center h-full gap-6"
+            style={{ animation: "fadeSlideIn 0.4s ease-out" }}
+          >
+            <div>
+              <h1
+                className="text-2xl font-semibold text-center mb-1"
+                style={{ color: "#1e293b" }}
+              >
+                What are you working on?
+              </h1>
+              <p className="text-sm text-center" style={{ color: "#94a3b8" }}>
+                เริ่มต้นบทสนทนาใหม่ได้เลย
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center max-w-md">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setInput(s);
+                    textareaRef.current?.focus();
+                  }}
+                  className="px-4 py-2 rounded-full text-sm transition-all duration-150 active:scale-95"
+                  style={{
+                    background: "rgba(255,255,255,0.6)",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.8)",
+                    color: "#475569",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.85)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.6)")
+                  }
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+            {isLoading && <TypingIndicator />}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input Area */}
+      <div className="px-6 pb-6 pt-2">
+        <div
+          className="max-w-2xl mx-auto flex items-end gap-3 px-4 py-3 rounded-2xl"
+          style={{
+            background: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.85)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
+          }}
+        >
+          {/* Attach button */}
+          <button
+            className="flex-shrink-0 p-1.5 rounded-xl transition-all hover:bg-black/5"
+            style={{ color: "#94a3b8" }}
+            aria-label="Attach file"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            placeholder="Message..."
+            rows={1}
+            className="flex-1 bg-transparent text-sm outline-none resize-none leading-relaxed"
+            style={{
+              color: "#1e293b",
+              maxHeight: "160px",
+              scrollbarWidth: "none",
+            }}
+          />
+
+          {/* Send button */}
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90"
+            style={{
+              background:
+                input.trim() && !isLoading
+                  ? "linear-gradient(135deg, #3b82f6, #6366f1)"
+                  : "rgba(0,0,0,0.08)",
+              color: input.trim() && !isLoading ? "#fff" : "#cbd5e1",
+              boxShadow:
+                input.trim() && !isLoading
+                  ? "0 4px 12px rgba(99,102,241,0.35)"
+                  : "none",
+            }}
+            aria-label="Send message"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-center text-xs mt-2" style={{ color: "#b0bec5" }}>
+          กด Enter เพื่อส่ง · Shift+Enter เพื่อขึ้นบรรทัดใหม่
+        </p>
+      </div>
+    </main>
+  );
+};
+
+export default ChatArea;
