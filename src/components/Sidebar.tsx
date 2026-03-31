@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useNavigate } from '@tanstack/react-router'
+import React, { useState, useEffect } from "react";
 
 export interface ChatHistory {
   id: string;
@@ -23,6 +24,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const navigate = useNavigate()
+  const [user, setUser] = useState<string | null>(null)
+  useEffect(() => {
+    setUser(localStorage.getItem("user"))
+  const syncUser = () => {
+    setUser(localStorage.getItem("user"))
+  }
+
+  window.addEventListener("storage", syncUser)
+  window.addEventListener("user-changed", syncUser)
+
+  return () => {
+    window.removeEventListener("storage", syncUser)
+    window.removeEventListener("user-changed", syncUser)
+  }
+}, [])
 
   const filteredHistory = chatHistory.filter((chat) =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -52,35 +70,45 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Header: Username + Collapse */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3">
         {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
-            >
-              {getInitials(userName)}
-            </div>
-            <span
-              className="font-semibold text-sm truncate max-w-[110px]"
-              style={{ color: "#1e293b" }}
-            >
-              {userName}
-            </span>
+    <>
+      {user ? (
+        // ✅ มี user → แสดงชื่อ
+        <div className="flex items-center gap-2">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+            style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
+          >
+            {getInitials(user)}
           </div>
-        )}
+          <span className="font-semibold text-sm truncate max-w-[110px] text-slate-800">
+            {user}
+          </span>
+        </div>
+      ) : (
+        // ❌ ไม่มี user → แสดงปุ่ม Login
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="ml-auto p-1.5 rounded-lg hover:bg-black/5 transition-colors"
-          style={{ color: "#64748b" }}
-          aria-label="Toggle sidebar"
+          onClick={() => navigate({ to: "/login" })}
+          className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-transparent text-slate-700 hover:bg-black/5 transition"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            {isCollapsed ? (
-              <path d="M9 18l6-6-6-6" />
-            ) : (
-              <path d="M15 18l-6-6 6-6" />
-            )}
-          </svg>
+          Login
         </button>
+      )}
+    </>
+  )}
+
+  {/* ปุ่ม collapse */}
+  <button
+    onClick={() => setIsCollapsed(!isCollapsed)}
+    className="ml-auto p-1.5 rounded-lg hover:bg-black/5 transition-colors text-slate-500"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      {isCollapsed ? (
+        <path d="M9 18l6-6-6-6" />
+      ) : (
+        <path d="M15 18l-6-6 6-6" />
+      )}
+    </svg>
+  </button> 
       </div>
 
       {/* Search */}
@@ -177,6 +205,38 @@ const Sidebar: React.FC<SidebarProps> = ({
           </p>
         )}
       </div>
+
+      {/* Bottom: Logout */}
+<div className="px-3 py-4 border-t border-white/40">
+  {user ? (
+    <button
+      onClick={() => {
+        localStorage.removeItem("user")
+        window.dispatchEvent(new Event("user-changed"))
+        navigate({ to: "/login" })
+      }}
+      className={`
+        w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium
+        transition-all duration-150 active:scale-95
+        ${isCollapsed ? "justify-center" : ""}
+      `}
+      style={{ color: "#ef4444" }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.08)")
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.background = "transparent")
+      }
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" y1="12" x2="9" y2="12" />
+      </svg>
+      {!isCollapsed && <span>Logout</span>}
+    </button>
+  ) : null}
+</div>
     </aside>
   );
 };
