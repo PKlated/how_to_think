@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar"
 import type { ChatHistory } from "../components/Sidebar"
 import ChatArea from "../components/ChatArea"
 import type { Message } from "../components/ChatArea"
+import { useEffect } from "react"
 
 interface ChatSession {
   id: string
@@ -32,6 +33,8 @@ function ChatPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const [user, setUser] = useState<string | null>(null)
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
 
@@ -85,7 +88,7 @@ function ChatPage() {
       <Sidebar
         chatHistory={chatHistory}
         activeChatId={activeSessionId}
-        userName="Asia k."
+        userName={user || ""}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
       />
