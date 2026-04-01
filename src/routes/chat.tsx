@@ -84,7 +84,7 @@ function ChatPage() {
 
   return (
     <div className="flex h-screen overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #d1fae5 0%, #e0f2fe 50%, #ede9fe 100%)" }}>
+      style={{ background: "linear-gradient(135deg, #a8d5b5 0%, #c5e8d0 35%, #d6eedf 60%, #deeaf5 100%)" }}>
       <Sidebar
         chatHistory={chatHistory}
         activeChatId={activeSessionId}

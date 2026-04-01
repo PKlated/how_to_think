@@ -11,7 +11,7 @@ import nltk
 
 from pypdf import PdfReader
 from nltk.stem import WordNetLemmatizer
-
+# ดาวน์โหลดข้อมูลภาษา
 nltk.download("wordnet", quiet=True)
 nltk.download("omw-1.4", quiet=True)
 
@@ -21,7 +21,7 @@ INGESTED_FILE = "dataset/ingested.json"
 CHUNK_SIZE    = 150
 CHUNK_OVERLAP = 30
 TOP_RESULTS   = 3
-MIN_SCORE     = 0.2
+
 
 # ── System Prompt ───────────────────────────────────────
 SYSTEM_PROMPT = """
@@ -43,14 +43,22 @@ lemmatizer = WordNetLemmatizer()
 # ── Preprocess ──────────────────────────────────────────
 
 def preprocess(text: str) -> str:
+    #แปลงทุกตัวอักษรเป็นพิมพ์เล็ก
     text = text.lower()
+    #ลบ URL ออก
     text = re.sub(r"https?://\S+", "", text)
+    #ลบคำว่า "source
     text = re.sub(r"source:\s*", "", text)
+    #ลบเลขหน้า
     text = re.sub(r"\bpage\s*\d+\b", "", text)
+    #ลบอักขระพิเศษทิ้ง
     text = re.sub(r"[^a-z0-9\s\.\,]", " ", text)
+    #ลบช่องว่างซ้ำซ้อนและตัดหัวท้าย
     text = re.sub(r"\s+", " ", text).strip()
+    #วนทุกคำแล้วทำ Lemmatization
     words = text.split()
     words = [lemmatizer.lemmatize(word) for word in words]
+     #ต่อคำกลับเป็นประโยค
     return " ".join(words)
 
 
