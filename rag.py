@@ -65,7 +65,7 @@ def preprocess(text: str) -> str:
 # ── Chunking ────────────────────────────────────────────
 
 def chunk_text(text: str) -> list[str]:
-    words  = text.split()
+    words  = text.split() #แยกข้อความออกเป็นคำๆ
     chunks = []
     start  = 0
 
@@ -153,6 +153,7 @@ def ingest_pdfs(collection):
         for i, chunk in enumerate(chunks):
             try:
                 embedding = ollama.embeddings(
+                    # โมเดลแปลงข้อความเป็น vector
                     model="nomic-embed-text",
                     prompt=chunk
                 )["embedding"]
@@ -197,7 +198,8 @@ def is_relevant(distances: list[float]) -> bool:
     if not distances:
         return False
     return distances[0] <= 300
-
+# distance น้อย = ใกล้เคียงมาก = เกี่ยวข้อง
+# distance มาก = ห่างมาก = ไม่เกี่ยวข้อง
 
 # ── ถามคำถาม ─────────────────────────────────────────────
 

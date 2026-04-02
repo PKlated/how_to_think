@@ -4,7 +4,7 @@ import Sidebar from "../components/Sidebar"
 import type { ChatHistory } from "../components/Sidebar"
 import ChatArea from "../components/ChatArea"
 import type { Message } from "../components/ChatArea"
-import { useEffect } from "react"
+import { sendMessage } from "../server/ai"
 
 interface ChatSession {
   id: string
@@ -16,25 +16,10 @@ interface ChatSession {
 const uid = () => Math.random().toString(36).slice(2, 10)
 const generateTitle = (msg: string) => msg.length > 36 ? msg.slice(0, 36) + "…" : msg
 
-const mockAIResponse = async (userMessage: string): Promise<string> => {
-  await new Promise((r) => setTimeout(r, 1000 + Math.random() * 800))
-  const replies: Record<string, string> = {
-    สวัสดี: "สวัสดีครับ! มีอะไรให้ช่วยได้บ้าง?",
-    hello: "Hello! How can I help you today?",
-    โค้ด: "แน่นอนครับ! บอกได้เลยว่าต้องการให้เขียนโค้ดอะไรครับ",
-  }
-  for (const [k, v] of Object.entries(replies)) {
-    if (userMessage.toLowerCase().includes(k)) return v
-  }
-  return `ได้รับข้อความของคุณแล้วครับ: "${userMessage}"`
-}
-
 function ChatPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-
-  const [user, setUser] = useState<string | null>(null)
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
 
@@ -50,6 +35,7 @@ function ChatPage() {
   const handleSendMessage = useCallback(async (content: string) => {
     const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
     let sessionId = activeSessionId
+    let currentSession: ChatSession | undefined
 
     if (!sessionId) {
       const newSession: ChatSession = {
@@ -59,15 +45,22 @@ function ChatPage() {
       setSessions((prev) => [newSession, ...prev])
       setActiveSessionId(newSession.id)
       sessionId = newSession.id
+      currentSession = newSession
     } else {
       setSessions((prev) => prev.map((s) =>
         s.id === sessionId ? { ...s, messages: [...s.messages, userMsg] } : s
       ))
+      currentSession = sessions.find((s) => s.id === sessionId)
     }
 
     setIsLoading(true)
     try {
-      const responseText = await mockAIResponse(content)
+      const history = (currentSession?.messages ?? []).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
+
+      const responseText = await sendMessage(content, history)
       const aiMsg: Message = { id: uid(), role: "assistant", content: responseText, timestamp: new Date() }
       setSessions((prev) => prev.map((s) =>
         s.id === sessionId ? { ...s, messages: [...s.messages, aiMsg] } : s
@@ -80,7 +73,7 @@ function ChatPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [activeSessionId])
+  }, [activeSessionId, sessions])
 
   return (
     <div className="flex h-screen overflow-hidden"
@@ -88,7 +81,7 @@ function ChatPage() {
       <Sidebar
         chatHistory={chatHistory}
         activeChatId={activeSessionId}
-        userName={user || ""}
+        userName=""
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
       />

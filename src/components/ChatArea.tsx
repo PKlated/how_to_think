@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-
+import ReactMarkdown from "react-markdown"
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -79,7 +79,17 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
           border: isUser ? "none" : "1px solid rgba(255,255,255,0.8)",
         }}
       >
-        <p style={{ whiteSpace: "pre-wrap" }}>{message.content}</p>
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          }}
+        >
+          {message.content}
+        </ReactMarkdown>
         <p
           className="text-xs mt-1.5"
           style={{ opacity: 0.55 }}
@@ -106,7 +116,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // Auto-resize
     const ta = textareaRef.current;
     if (ta) {
       ta.style.height = "auto";
@@ -130,10 +139,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
   };
 
   const suggestions = [
-    "สรุปเนื้อหาให้หน่อย",
-    "ช่วยเขียนโค้ดให้ได้เลย",
-    "อธิบายให้เข้าใจง่าย",
-    "วิเคราะห์ข้อมูลนี้",
+    {text: "How to recycle plastic bottles?" },
+    {text: "How to dispose of old batteries?" },
+    {text: "Pros & cons of recycling paper" },
+    {text: "How to compost organic waste?" },
   ];
 
   return (
@@ -160,15 +169,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 justify-center max-w-md">
+            <div className="grid grid-cols-2 gap-3 max-w-md w-full">
               {suggestions.map((s) => (
                 <button
-                  key={s}
+                  key={s.text}
                   onClick={() => {
-                    setInput(s);
+                    setInput(s.text);
                     textareaRef.current?.focus();
                   }}
-                  className="px-4 py-2 rounded-full text-sm transition-all duration-150 active:scale-95"
+                  className="flex flex-col items-start gap-1 px-4 py-3 rounded-2xl text-sm transition-all duration-150 active:scale-95 text-left"
                   style={{
                     background: "rgba(255,255,255,0.6)",
                     backdropFilter: "blur(10px)",
@@ -182,7 +191,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
                     ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.6)")
                   }
                 >
-                  {s}
+                  <span className="text-xl">{s.icon}</span>
+                  <span className="leading-snug" style={{ color: "#334155", fontWeight: 500 }}>
+                    {s.text}
+                  </span>
                 </button>
               ))}
             </div>
