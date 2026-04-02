@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Sidebar from "../components/Sidebar"
 import type { ChatHistory } from "../components/Sidebar"
 import ChatArea from "../components/ChatArea"
 import type { Message } from "../components/ChatArea"
-import { sendMessage } from "../server/ai"
+import { sendMessage, createSession, getSessions, createMessage, getMessages } from "../server/ai"
 
 interface ChatSession {
   id: string
@@ -22,6 +22,45 @@ function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
+  const userId = localStorage.getItem("userId")
+
+  // ===== โหลด sessions จาก DB =====
+  useEffect(() => {
+    if (!userId) return
+    getSessions(userId).then((data) => {
+      setSessions(data.map((s: any) => ({
+        id: s._id,
+        title: s.title,
+        messages: [],
+        createdAt: new Date(s.createdAt),
+      })))
+    })
+  }, [userId])
+
+  // ===== โหลด messages เมื่อเลือก session =====
+  useEffect(() => {
+    if (!activeSessionId) return
+    const session = sessions.find((s) => s.id === activeSessionId)
+    if (session && session.messages.length > 0) return // โหลดแล้ว
+
+    getMessages(activeSessionId).then((data) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                messages: data.map((m: any) => ({
+                  id: m._id,
+                  role: m.role,
+                  content: m.content,
+                  timestamp: new Date(m.timestamp),
+                })),
+              }
+            : s
+        )
+      )
+    })
+  }, [activeSessionId])
 
   const chatHistory: ChatHistory[] = sessions.map((s) => ({
     id: s.id,
@@ -33,83 +72,81 @@ function ChatPage() {
   const handleSelectChat = useCallback((id: string) => setActiveSessionId(id), [])
 
   const handleSendMessage = useCallback(async (content: string) => {
-  const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
+    const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
 
-  let sessionId = activeSessionId
-  let currentSession: ChatSession | undefined
+    let sessionId = activeSessionId
+    let currentSession: ChatSession | undefined
 
-  if (!sessionId) {
-    const newSession: ChatSession = {
-      id: uid(),
-      title: generateTitle(content),
-      messages: [userMsg],
-      createdAt: new Date(),
-    }
+    if (!sessionId) {
+      // สร้าง session ใหม่ใน DB
+      const title = generateTitle(content)
+      const newSessionDB = await createSession(userId!, title)
 
-    setSessions((prev) => [newSession, ...prev])
-    setActiveSessionId(newSession.id)
+      const newSession: ChatSession = {
+        id: newSessionDB._id,
+        title,
+        messages: [userMsg],
+        createdAt: new Date(),
+      }
 
-    sessionId = newSession.id
-    currentSession = newSession
-  } else {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId
-          ? { ...s, messages: [...s.messages, userMsg] }
-          : s
+      setSessions((prev) => [newSession, ...prev])
+      setActiveSessionId(newSession.id)
+      sessionId = newSession.id
+      currentSession = newSession
+    } else {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, messages: [...s.messages, userMsg] } : s
+        )
       )
-    )
-    currentSession = sessions.find((s) => s.id === sessionId)
-  }
-
-  setIsLoading(true)
-
-  try {
-    const history = (currentSession?.messages ?? []).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }))
-
-    const res = await sendMessage(content, history, sessionId)
-
-    const aiMsg: Message = {
-      id: uid(),
-      role: "assistant",
-      content: res.answer,   
-      timestamp: new Date(),
+      currentSession = sessions.find((s) => s.id === sessionId)
     }
 
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId
-          ? { ...s, messages: [...s.messages, aiMsg] }
-          : s
+    // เก็บ user message ลง DB
+    await createMessage(sessionId!, "user", content)
+
+    setIsLoading(true)
+
+    try {
+      const history = (currentSession?.messages ?? []).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
+
+      const res = await sendMessage(content, history, sessionId!)
+
+      const aiMsg: Message = {
+        id: uid(),
+        role: "assistant",
+        content: res.answer,
+        timestamp: new Date(),
+      }
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, messages: [...s.messages, aiMsg] } : s
+        )
       )
-    )
 
-    if (res.sessionId) {
-      setActiveSessionId(res.sessionId)
-    }
+      // เก็บ AI message ลง DB
+      await createMessage(sessionId!, "assistant", res.answer)
 
-  } catch {
-    const errMsg: Message = {
-      id: uid(),
-      role: "assistant",
-      content: "เกิดข้อผิดพลาด กรุณาลองใหม่ครับ",
-      timestamp: new Date(),
-    }
-
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId
-          ? { ...s, messages: [...s.messages, errMsg] }
-          : s
+    } catch {
+      const errMsg: Message = {
+        id: uid(),
+        role: "assistant",
+        content: "เกิดข้อผิดพลาด กรุณาลองใหม่ครับ",
+        timestamp: new Date(),
+      }
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, messages: [...s.messages, errMsg] } : s
+        )
       )
-    )
-  } finally {
-    setIsLoading(false)
-  }
-}, [activeSessionId, sessions])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [activeSessionId, sessions, userId])
 
   return (
     <div className="flex h-screen overflow-hidden"

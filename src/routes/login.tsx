@@ -31,6 +31,7 @@ function LoginPage() {
 
       // ✅ เก็บ userId จาก backend
       localStorage.setItem('userId', user._id)
+      localStorage.setItem('user', user.name)
 
       window.dispatchEvent(new Event('user-changed'))
       navigate({ to: '/chat' })
@@ -54,6 +55,7 @@ function LoginPage() {
 
       // ✅ เก็บ userId จาก backend
       localStorage.setItem('userId', user._id)
+      localStorage.setItem('user', user.name)
 
       window.dispatchEvent(new Event('user-changed'))
       navigate({ to: '/chat' })

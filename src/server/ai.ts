@@ -70,4 +70,43 @@ export async function login(email: string, password: string) {
 // ================= LOGOUT =================
 export function logout() {
   localStorage.removeItem("userId");
+  localStorage.removeItem("user");
+}
+
+// ================= SESSIONS =================
+export async function createSession(userId: string, title: string) {
+  const res = await fetch("http://localhost:8000/api/sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, title }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail)
+  return data
+}
+
+export async function getSessions(userId: string) {
+  const res = await fetch(`http://localhost:8000/api/sessions/${userId}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail)
+  return data
+}
+
+// ================= MESSAGES =================
+export async function createMessage(sessionId: string, role: string, content: string) {
+  const res = await fetch("http://localhost:8000/api/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, role, content }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail)
+  return data
+}
+
+export async function getMessages(sessionId: string) {
+  const res = await fetch(`http://localhost:8000/api/messages/${sessionId}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail)
+  return data
 }
