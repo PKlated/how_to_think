@@ -1,19 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { login, signup } from '../server/ai' // ✅ ใช้ API จริง
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
-
-type MockUser = { name: string; email: string; password: string }
-
-function getUsers(): MockUser[] {
-  return JSON.parse(localStorage.getItem('mock_users') ?? '[]')
-}
-
-function saveUsers(users: MockUser[]) {
-  localStorage.setItem('mock_users', JSON.stringify(users))
-}
 
 function LoginPage() {
   const [tab, setTab] = useState<'login' | 'signup'>('login')
@@ -25,37 +16,55 @@ function LoginPage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const handleLogin = (e: React.FormEvent) => {
+  // ===== LOGIN =====
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const users = getUsers()
-    const found = users.find(
-      (u) => u.email === loginEmail && u.password === loginPassword
-    )
-    if (!found) { setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); return }
-    localStorage.setItem('user', loginEmail)
-    window.dispatchEvent(new Event('user-changed'))
-    navigate({ to: '/chat' })
+
+    if (!loginEmail || !loginPassword) {
+      setError('กรุณากรอก Email และ Password')
+      return
+    }
+
+    try {
+      const user = await login(loginEmail, loginPassword)
+
+      // ✅ เก็บ userId จาก backend
+      localStorage.setItem('userId', user._id)
+
+      window.dispatchEvent(new Event('user-changed'))
+      navigate({ to: '/chat' })
+    } catch (err: any) {
+      setError(err.message || 'Login failed')
+    }
   }
 
-  const handleSignup = (e: React.FormEvent) => {
+  // ===== SIGNUP =====
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
     if (!signupName || !signupEmail || !signupPassword) {
-      setError('กรุณากรอกข้อมูลให้ครบ'); return
+      setError('กรุณากรอกข้อมูลให้ครบ')
+      return
     }
-    const users = getUsers()
-    if (users.find((u) => u.email === signupEmail)) {
-      setError('อีเมลนี้มีบัญชีอยู่แล้ว'); return
+
+    try {
+      const user = await signup(signupName, signupEmail, signupPassword)
+
+      // ✅ เก็บ userId จาก backend
+      localStorage.setItem('userId', user._id)
+
+      window.dispatchEvent(new Event('user-changed'))
+      navigate({ to: '/chat' })
+    } catch (err: any) {
+      setError(err.message || 'Signup failed')
     }
-    const newUser: MockUser = { name: signupName, email: signupEmail, password: signupPassword }
-    saveUsers([...users, newUser])
-    localStorage.setItem('user', signupEmail)
-    window.dispatchEvent(new Event('user-changed'))
-    navigate({ to: '/chat' })
   }
 
-  const inputClass = "w-full px-5 py-4 rounded-2xl text-sm outline-none transition-all"
+  const inputClass =
+    "w-full px-5 py-4 rounded-2xl text-sm outline-none transition-all"
+
   const inputStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.5)',
     border: '1.5px solid rgba(255,255,255,0.75)',
@@ -67,11 +76,12 @@ function LoginPage() {
     <div
       className="h-screen flex overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #a8d5b5 0%, #c5e8d0 35%, #d6eedf 60%, #deeaf5 100%)',
+        background:
+          'linear-gradient(135deg, #a8d5b5 0%, #c5e8d0 35%, #d6eedf 60%, #deeaf5 100%)',
         fontFamily: "'DM Sans', sans-serif",
       }}
     >
-      {/* LEFT — branding */}
+      {/* LEFT */}
       <div className="flex-1 flex flex-col justify-center items-center gap-6 relative">
         <div
           className="absolute"
@@ -91,33 +101,32 @@ function LoginPage() {
           >
             HOW TO THINK
           </h1>
-          <p className="text-xs mt-1" style={{ color: '#52b788', letterSpacing: '0.05em' }}>
+          <p className="text-xs mt-1" style={{ color: '#52b788' }}>
             Your intelligent thinking partner
           </p>
         </div>
       </div>
 
-      {/* divider */}
+      {/* Divider */}
       <div style={{ width: 1, margin: '60px 0', background: 'rgba(255,255,255,0.45)' }} />
 
-      {/* RIGHT — form */}
+      {/* RIGHT */}
       <div className="flex-1 flex justify-center items-center px-10">
         <div className="w-full" style={{ maxWidth: 500 }}>
 
-          {/* Tab switcher */}
+          {/* Tabs */}
           <div
             className="flex gap-1 p-1.5 mb-6 rounded-2xl"
-            style={{ background: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(10px)' }}
+            style={{ background: 'rgba(255,255,255,0.3)' }}
           >
             {(['login', 'signup'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setError('') }}
-                className="flex-1 py-3 rounded-xl text-sm font-medium transition-all"
+                className="flex-1 py-3 rounded-xl text-sm font-medium"
                 style={{
                   background: tab === t ? 'white' : 'transparent',
                   color: tab === t ? '#1a2e1a' : '#52b788',
-                  boxShadow: tab === t ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
                 }}
               >
                 {t === 'login' ? 'Login' : 'Sign up'}
@@ -130,41 +139,26 @@ function LoginPage() {
             className="flex flex-col gap-5 p-9 rounded-3xl"
             style={{
               background: 'rgba(255,255,255,0.55)',
-              backdropFilter: 'blur(24px)',
               border: '1.5px solid rgba(255,255,255,0.8)',
-              boxShadow: '0 8px 40px rgba(45,106,79,0.12)',
             }}
           >
-            <div className="mb-1">
-              <h3 className="text-xl font-semibold" style={{ color: '#1a2e1a' }}>
-                {tab === 'login' ? 'Welcome back' : 'Create account'}
-              </h3>
-              <p className="text-sm mt-1" style={{ color: '#74b894' }}>
-                {tab === 'login' ? 'เข้าสู่ระบบเพื่อเริ่มต้น' : 'สร้างบัญชีใหม่ได้เลย'}
-              </p>
-            </div>
+            <h3 className="text-xl font-semibold">
+              {tab === 'login' ? 'Welcome back' : 'Create account'}
+            </h3>
 
             {error && (
-              <div
-                className="text-xs text-center py-2.5 px-4 rounded-xl"
-                style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  color: '#ef4444',
-                  border: '1px solid rgba(239,68,68,0.15)',
-                }}
-              >
+              <div className="text-red-500 text-sm text-center">
                 {error}
               </div>
             )}
 
-            {/* Login Form */}
+            {/* LOGIN */}
             {tab === 'login' && (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 <input
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Email Address"
-                  type="email"
+                  placeholder="Email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                 />
@@ -176,37 +170,26 @@ function LoginPage() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
-                <button
-                  type="submit"
-                  className="w-full py-4 rounded-2xl text-sm font-semibold transition-all active:scale-95 mt-1"
-                  style={{
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
-                    letterSpacing: '0.03em',
-                  }}
-                >
-                  Login →
+                <button className="bg-black text-white py-3 rounded-xl">
+                  Login
                 </button>
               </form>
             )}
 
-            {/* Signup Form */}
+            {/* SIGNUP */}
             {tab === 'signup' && (
               <form onSubmit={handleSignup} className="flex flex-col gap-4">
                 <input
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Full Name"
+                  placeholder="Name"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                 />
                 <input
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Email Address"
-                  type="email"
+                  placeholder="Email"
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                 />
@@ -218,24 +201,13 @@ function LoginPage() {
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                 />
-                <button
-                  type="submit"
-                  className="w-full py-4 rounded-2xl text-sm font-semibold transition-all active:scale-95 mt-1"
-                  style={{
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
-                    letterSpacing: '0.03em',
-                  }}
-                >
-                  Create Account →
+                <button className="bg-black text-white py-3 rounded-xl">
+                  Signup
                 </button>
               </form>
             )}
           </div>
 
-         
         </div>
       </div>
     </div>
