@@ -191,7 +191,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
                     ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.6)")
                   }
                 >
-                  <span className="text-xl">{s.icon}</span>
+                  <span className="text-xl"></span>
                   <span className="leading-snug" style={{ color: "#334155", fontWeight: 500 }}>
                     {s.text}
                   </span>
