@@ -33,47 +33,83 @@ function ChatPage() {
   const handleSelectChat = useCallback((id: string) => setActiveSessionId(id), [])
 
   const handleSendMessage = useCallback(async (content: string) => {
-    const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
-    let sessionId = activeSessionId
-    let currentSession: ChatSession | undefined
+  const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
 
-    if (!sessionId) {
-      const newSession: ChatSession = {
-        id: uid(), title: generateTitle(content),
-        messages: [userMsg], createdAt: new Date(),
-      }
-      setSessions((prev) => [newSession, ...prev])
-      setActiveSessionId(newSession.id)
-      sessionId = newSession.id
-      currentSession = newSession
-    } else {
-      setSessions((prev) => prev.map((s) =>
-        s.id === sessionId ? { ...s, messages: [...s.messages, userMsg] } : s
-      ))
-      currentSession = sessions.find((s) => s.id === sessionId)
+  let sessionId = activeSessionId
+  let currentSession: ChatSession | undefined
+
+  if (!sessionId) {
+    const newSession: ChatSession = {
+      id: uid(),
+      title: generateTitle(content),
+      messages: [userMsg],
+      createdAt: new Date(),
     }
 
-    setIsLoading(true)
-    try {
-      const history = (currentSession?.messages ?? []).map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+    setSessions((prev) => [newSession, ...prev])
+    setActiveSessionId(newSession.id)
 
-      const responseText = await sendMessage(content, history)
-      const aiMsg: Message = { id: uid(), role: "assistant", content: responseText, timestamp: new Date() }
-      setSessions((prev) => prev.map((s) =>
-        s.id === sessionId ? { ...s, messages: [...s.messages, aiMsg] } : s
-      ))
-    } catch {
-      const errMsg: Message = { id: uid(), role: "assistant", content: "เกิดข้อผิดพลาด กรุณาลองใหม่ครับ", timestamp: new Date() }
-      setSessions((prev) => prev.map((s) =>
-        s.id === sessionId ? { ...s, messages: [...s.messages, errMsg] } : s
-      ))
-    } finally {
-      setIsLoading(false)
+    sessionId = newSession.id
+    currentSession = newSession
+  } else {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, userMsg] }
+          : s
+      )
+    )
+    currentSession = sessions.find((s) => s.id === sessionId)
+  }
+
+  setIsLoading(true)
+
+  try {
+    const history = (currentSession?.messages ?? []).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }))
+
+    const res = await sendMessage(content, history, sessionId)
+
+    const aiMsg: Message = {
+      id: uid(),
+      role: "assistant",
+      content: res.answer,   
+      timestamp: new Date(),
     }
-  }, [activeSessionId, sessions])
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, aiMsg] }
+          : s
+      )
+    )
+
+    if (res.sessionId) {
+      setActiveSessionId(res.sessionId)
+    }
+
+  } catch {
+    const errMsg: Message = {
+      id: uid(),
+      role: "assistant",
+      content: "เกิดข้อผิดพลาด กรุณาลองใหม่ครับ",
+      timestamp: new Date(),
+    }
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, errMsg] }
+          : s
+      )
+    )
+  } finally {
+    setIsLoading(false)
+  }
+}, [activeSessionId, sessions])
 
   return (
     <div className="flex h-screen overflow-hidden"
