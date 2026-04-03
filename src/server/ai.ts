@@ -51,6 +51,7 @@ export async function signup(name: string, email: string, password: string) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || data.message);
   localStorage.setItem("userId", data._id);
+  localStorage.setItem("user", JSON.stringify(data));
   return data;
 }
 
@@ -64,6 +65,27 @@ export async function login(email: string, password: string) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || data.message);
   localStorage.setItem("userId", data._id);
+  localStorage.setItem("user", JSON.stringify(data));
+  return data;
+}
+
+// ================= UPDATE PROFILE =================
+export async function updateProfile(
+  name: string,
+  password: string
+) {
+  const userId = localStorage.getItem("userId");
+  const res = await fetch("http://localhost:8000/api/user/update", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
+      name,
+      password,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || data.message);
   return data;
 }
 

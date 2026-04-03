@@ -46,6 +46,11 @@ class LoginModel(BaseModel):
     email: str
     password: str
 
+class UpdateUserModel(BaseModel):
+    userId: str
+    name: str | None = None
+    password: str | None = None
+
 # ===== CHAT =====
 @app.post("/chat")
 async def chat(req: ChatRequest):
@@ -80,6 +85,32 @@ def login(user: LoginModel):
     if not found or not bcrypt.checkpw(user.password.encode(), found["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"_id": str(found["_id"]), "name": found["name"], "email": found["email"]}
+
+# ===== UPDATE USER =====
+@app.put("/api/user/update")
+def update_user(data: UpdateUserModel):
+    from bson import ObjectId
+    user = users_col.find_one({"_id": ObjectId(data.userId)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_data = {}
+    if data.name:
+        update_data["name"] = data.name
+    if data.password:
+        hashed = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt())
+        update_data["password"] = hashed
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    users_col.update_one(
+        {"_id": ObjectId(data.userId)},
+        {"$set": update_data}
+    )
+    updated = users_col.find_one({"_id": ObjectId(data.userId)})
+    return {
+        "_id": str(updated["_id"]),
+        "name": updated["name"],
+        "email": updated["email"]
+    }
 
 # ===== SESSION =====
 from bson import ObjectId

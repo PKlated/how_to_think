@@ -22,7 +22,14 @@ function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
-  const userId = localStorage.getItem("userId")
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+  if (typeof window !== "undefined") {
+    const id = localStorage.getItem("userId")
+    setUserId(id)
+  }
+}, [])
 
   // ===== โหลด sessions จาก DB =====
   useEffect(() => {
@@ -80,6 +87,7 @@ function ChatPage() {
     if (!sessionId) {
       // สร้าง session ใหม่ใน DB
       const title = generateTitle(content)
+      if (!userId) return
       const newSessionDB = await createSession(userId!, title)
 
       const newSession: ChatSession = {
