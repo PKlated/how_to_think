@@ -1,5 +1,5 @@
 # ── ติดตั้ง packages ────────────────────────────────────
-# pip install chromadb ollama pypdf nltk
+# pip install chromadb ollama pypdf nltk deep-translator langdetect
 
 import ollama
 import chromadb
@@ -11,6 +11,9 @@ import nltk
 
 from pypdf import PdfReader
 from nltk.stem import WordNetLemmatizer
+from deep_translator import GoogleTranslator
+from langdetect import detect
+
 # ดาวน์โหลดข้อมูลภาษา
 nltk.download("wordnet", quiet=True)
 nltk.download("omw-1.4", quiet=True)
@@ -40,32 +43,93 @@ reply exactly: "I can only help with recycling-related questions."
 lemmatizer = WordNetLemmatizer()
 
 
+# ── Translation Helpers ─────────────────────────────────
+
+def detect_language(text: str) -> str:
+    """
+    ตรวจจับภาษาของข้อความ
+    คืนค่า 'th' ถ้าเป็นภาษาไทย, 'en' หรือภาษาอื่น
+    """
+    try:
+        lang = detect(text)
+        return lang
+    except Exception:
+        return "en"  # ถ้าตรวจไม่ได้ให้ถือว่าเป็นภาษาอังกฤษ
+
+
+def translate_th_to_en(text: str) -> str:
+    """
+    แปลภาษาไทย → ภาษาอังกฤษ
+    ใช้ GoogleTranslator จาก deep-translator (ฟรี ไม่ต้อง API key)
+    """
+    try:
+        translated = GoogleTranslator(source="th", target="en").translate(text)
+        print(f"  [แปล TH→EN]: {text!r} → {translated!r}")
+        return translated
+    except Exception as e:
+        print(f"  [แปล TH→EN ล้มเหลว]: {e}")
+        return text  # คืนค่าเดิมถ้าแปลไม่ได้
+
+
+def translate_en_to_th(text: str) -> str:
+    """
+    แปลภาษาอังกฤษ → ภาษาไทย
+    จัดการข้อความยาวโดยแบ่งเป็นท่อนๆ (GoogleTranslator รองรับสูงสุด ~5000 ตัวอักษร)
+    """
+    try:
+        # แบ่งข้อความที่ยาวเกินออกเป็นท่อน
+        max_chunk = 4500
+        if len(text) <= max_chunk:
+            return GoogleTranslator(source="en", target="th").translate(text)
+
+        # ถ้ายาวเกิน ให้แบ่งแปลทีละท่อน
+        parts = []
+        sentences = text.split(". ")
+        current   = ""
+
+        for sentence in sentences:
+            if len(current) + len(sentence) < max_chunk:
+                current += sentence + ". "
+            else:
+                if current:
+                    translated_part = GoogleTranslator(
+                        source="en", target="th"
+                    ).translate(current.strip())
+                    parts.append(translated_part)
+                current = sentence + ". "
+
+        # แปลส่วนที่เหลือ
+        if current.strip():
+            translated_part = GoogleTranslator(
+                source="en", target="th"
+            ).translate(current.strip())
+            parts.append(translated_part)
+
+        return " ".join(parts)
+
+    except Exception as e:
+        print(f"  [แปล EN→TH ล้มเหลว]: {e}")
+        return text  # คืนค่าเดิมถ้าแปลไม่ได้
+
+
 # ── Preprocess ──────────────────────────────────────────
 
 def preprocess(text: str) -> str:
-    #แปลงทุกตัวอักษรเป็นพิมพ์เล็ก
     text = text.lower()
-    #ลบ URL ออก
     text = re.sub(r"https?://\S+", "", text)
-    #ลบคำว่า "source
     text = re.sub(r"source:\s*", "", text)
-    #ลบเลขหน้า
     text = re.sub(r"\bpage\s*\d+\b", "", text)
-    #ลบอักขระพิเศษทิ้ง
     text = re.sub(r"[^a-z0-9\s\.\,]", " ", text)
-    #ลบช่องว่างซ้ำซ้อนและตัดหัวท้าย
     text = re.sub(r"\s+", " ", text).strip()
-    #วนทุกคำแล้วทำ Lemmatization
     words = text.split()
     words = [lemmatizer.lemmatize(word) for word in words]
-     #ต่อคำกลับเป็นประโยค
     return " ".join(words)
 
 
 # ── Chunking ────────────────────────────────────────────
 
 def chunk_text(text: str) -> list[str]:
-    words  = text.split() #แยกข้อความออกเป็นคำๆ
+    words  = text.split()
     chunks = []
     start  = 0
 
@@ -153,7 +217,6 @@ def ingest_pdfs(collection):
         for i, chunk in enumerate(chunks):
             try:
                 embedding = ollama.embeddings(
-                    # โมเดลแปลงข้อความเป็น vector
                     model="nomic-embed-text",
                     prompt=chunk
                 )["embedding"]
@@ -185,31 +248,63 @@ def ingest_pdfs(collection):
 # ── เช็คคำถาม ────────────────────────────────────────────
 
 def has_recycling_keyword(question: str) -> bool:
-    keywords = [
+    """
+    เช็ค keyword ทั้งภาษาอังกฤษและภาษาไทย
+    """
+    keywords_en = [
         "recycle", "recycling", "waste", "trash", "garbage",
         "plastic", "metal", "organic", "electronic", "battery",
         "compost", "dispose", "hazardous", "leather", "textile",
         "aluminum", "copper", "iron", "chemical", "wood", "paper",
     ]
+    # คำภาษาไทยที่เกี่ยวข้องกับการรีไซเคิล
+    keywords_th = [
+        "รีไซเคิล", "ขยะ", "เศษ", "พลาสติก", "โลหะ", "กระดาษ",
+        "แก้ว", "แบตเตอรี่", "อิเล็กทรอนิกส์", "ปุ๋ยหมัก", "กำจัด",
+        "อันตราย", "อลูมิเนียม", "ทองแดง", "เหล็ก", "สารเคมี", "ไม้",
+        "หนัง", "ผ้า", "วัสดุ", "นำกลับ", "ทิ้ง", "คัดแยก",
+    ]
     q = question.lower()
-    return any(kw in q for kw in keywords)
+    return any(kw in q for kw in keywords_en + keywords_th)
+
 
 def is_relevant(distances: list[float]) -> bool:
     if not distances:
         return False
     return distances[0] <= 300
-# distance น้อย = ใกล้เคียงมาก = เกี่ยวข้อง
-# distance มาก = ห่างมาก = ไม่เกี่ยวข้อง
 
-# ── ถามคำถาม ─────────────────────────────────────────────
+
+# ── ถามคำถาม (รองรับภาษาไทย) ────────────────────────────
 
 def ask(collection, question: str, history: list) -> str:
+    """
+    Flow:
+    1. ตรวจสอบภาษาของคำถาม
+    2. ถ้าเป็นภาษาไทย → แปลเป็นอังกฤษก่อน
+    3. เช็ค keyword และ relevance
+    4. ค้นหาใน ChromaDB ด้วยคำถามภาษาอังกฤษ
+    5. ได้คำตอบจาก LLM เป็นภาษาอังกฤษ
+    6. ถ้าคำถามต้นฉบับเป็นภาษาไทย → แปลคำตอบกลับเป็นภาษาไทย
+    """
 
-    # ชั้นที่ 1: เช็ค keyword
-    if not has_recycling_keyword(question):
-        return "I can only help with recycling-related questions."
+    # ── Step 1: ตรวจสอบภาษา ─────────────────────────────
+    lang            = detect_language(question)
+    is_thai         = (lang == "th")
+    question_for_rag = question  # คำถามที่จะใช้ค้นหาใน RAG
 
-    clean_question = preprocess(question)
+    if is_thai:
+        print(f"  [ตรวจพบภาษาไทย] กำลังแปลคำถาม...")
+        question_for_rag = translate_th_to_en(question)
+
+    # ── Step 2: เช็ค keyword (ใช้คำถามต้นฉบับ เพื่อให้จับคำไทยได้ด้วย) ──
+    if not has_recycling_keyword(question) and not has_recycling_keyword(question_for_rag):
+        not_relevant_msg = "I can only help with recycling-related questions."
+        if is_thai:
+            return "ขอโทษครับ ฉันช่วยตอบได้เฉพาะคำถามเกี่ยวกับการรีไซเคิลและการจัดการขยะเท่านั้น"
+        return not_relevant_msg
+
+    # ── Step 3: สร้าง embedding จากคำถามภาษาอังกฤษ ────────
+    clean_question = preprocess(question_for_rag)
 
     query_embedding = ollama.embeddings(
         model="nomic-embed-text",
@@ -223,16 +318,17 @@ def ask(collection, question: str, history: list) -> str:
     )
 
     distances = results["distances"][0]
-
-    # debug — ดู score ที่ได้
     print(f"  DEBUG score: {1 - distances[0]:.3f}")
 
-    # ชั้นที่ 2: เช็ค relevance score
+    # ── Step 4: เช็ค relevance score ────────────────────
     if not is_relevant(distances):
+        if is_thai:
+            return "ขอโทษครับ ฉันช่วยตอบได้เฉพาะคำถามเกี่ยวกับการรีไซเคิลและการจัดการขยะเท่านั้น"
         return "I can only help with recycling-related questions."
 
     context = "\n".join(results["documents"][0])
 
+    # ── Step 5: ส่งคำถามภาษาอังกฤษไปยัง LLM ─────────────
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         *history,
@@ -244,7 +340,7 @@ Use this context to answer the question.
 Context:
 {context}
 
-Question: {question}
+Question: {question_for_rag}
 """
         }
     ]
@@ -254,13 +350,20 @@ Question: {question}
         messages=messages
     )
 
-    return response["message"]["content"]
+    answer_en = response["message"]["content"]
+
+    # ── Step 6: แปลคำตอบกลับเป็นภาษาไทย (ถ้าคำถามเป็นไทย) ──
+    if is_thai:
+        print("  [กำลังแปลคำตอบเป็นภาษาไทย...]")
+        return translate_en_to_th(answer_en)
+
+    return answer_en
 
 
 # ── Main ──────────────────────────────────────────────────
 
 def main():
-    print("=== Recycling AI Assistant ===\n")
+    print("=== Recycling AI Assistant (รองรับภาษาไทย) ===\n")
 
     chroma_client = chromadb.PersistentClient(path="./chroma_db")
     collection    = chroma_client.get_or_create_collection("recycling_rag")
@@ -268,12 +371,13 @@ def main():
     ingest_pdfs(collection)
 
     history = []
-    print("พิมพ์ 'quit' เพื่อออก\n")
+    print("พิมพ์ 'quit' หรือ 'ออก' เพื่อออกจากโปรแกรม\n")
+    print("สามารถถามเป็นภาษาไทยหรือภาษาอังกฤษก็ได้\n")
 
     while True:
-        question = input("You: ").strip()
+        question = input("คุณ: ").strip()
 
-        if question.lower() == "quit":
+        if question.lower() in ("quit", "ออก"):
             print("ออกจากโปรแกรม")
             break
 
@@ -283,7 +387,12 @@ def main():
         answer = ask(collection, question, history)
         print(f"\nAI: {answer}\n")
 
-        history.append({"role": "user",      "content": question})
+        # เก็บ history เป็นภาษาอังกฤษเพื่อให้ LLM ทำงานได้ดีขึ้น
+        lang = detect_language(question)
+        if lang == "th":
+            history.append({"role": "user",      "content": translate_th_to_en(question)})
+        else:
+            history.append({"role": "user",      "content": question})
         history.append({"role": "assistant", "content": answer})
 
         if len(history) > 6:

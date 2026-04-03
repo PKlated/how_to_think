@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown"
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -25,7 +26,10 @@ const TypingIndicator: React.FC = () => (
     </div>
     <div
       className="px-4 py-3 rounded-2xl rounded-bl-sm"
-      style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(10px)" }}
+      style={{
+        background: "#ffffff",
+        border: "1px solid #74c69d",
+      }}
     >
       <div className="flex gap-1.5 items-center h-4">
         {[0, 1, 2].map((i) => (
@@ -33,7 +37,7 @@ const TypingIndicator: React.FC = () => (
             key={i}
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              background: "#94a3b8",
+              background: "#74c69d",
               animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
             }}
           />
@@ -51,7 +55,7 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
       className={`flex items-end gap-3 mb-4 ${isUser ? "flex-row-reverse" : ""}`}
       style={{ animation: "fadeSlideIn 0.25s ease-out" }}
     >
-      {/* Avatar */}
+      {/* Avatar ฝั่ง AI */}
       {!isUser && (
         <div
           className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
@@ -68,15 +72,14 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
           isUser ? "rounded-br-sm" : "rounded-bl-sm"
         }`}
         style={{
-          background: isUser
-            ? "linear-gradient(135deg, #3b82f6, #6366f1)"
-            : "rgba(255,255,255,0.75)",
-          backdropFilter: "blur(10px)",
-          color: isUser ? "#fff" : "#1e293b",
+          // ✅ ฝั่งคนถาม: เขียวพาสเทล | ฝั่ง AI: ขาว
+          background: isUser ? "#b7e4c7" : "#ffffff",
+          color: isUser ? "#1a3d2b" : "#1e293b",
+          // ✅ ขอบเขียวทั้งสองฝั่ง
+          border: "1px solid #74c69d",
           boxShadow: isUser
-            ? "0 4px 15px rgba(99,102,241,0.25)"
+            ? "0 4px 15px rgba(116,198,157,0.3)"
             : "0 2px 10px rgba(0,0,0,0.06)",
-          border: isUser ? "none" : "1px solid rgba(255,255,255,0.8)",
         }}
       >
         <ReactMarkdown
@@ -90,10 +93,7 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
         >
           {message.content}
         </ReactMarkdown>
-        <p
-          className="text-xs mt-1.5"
-          style={{ opacity: 0.55 }}
-        >
+        <p className="text-xs mt-1.5" style={{ opacity: 0.5 }}>
           {message.timestamp.toLocaleTimeString("th-TH", {
             hour: "2-digit",
             minute: "2-digit",
@@ -139,10 +139,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
   };
 
   const suggestions = [
-    {text: "How to recycle plastic bottles?" },
-    {text: "How to dispose of old batteries?" },
-    {text: "Pros & cons of recycling paper" },
-    {text: "How to compost organic waste?" },
+    { text: "How to recycle plastic bottles?" },
+    { text: "How to dispose of old batteries?" },
+    { text: "Pros & cons of recycling paper" },
+    { text: "How to compost organic waste?" },
   ];
 
   return (
@@ -151,17 +151,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
       {/* Messages or Empty state */}
-      <div className="flex-1 overflow-y-auto px-6 py-6" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.1) transparent" }}>
+      <div
+        className="flex-1 overflow-y-auto px-6 py-6"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.1) transparent" }}
+      >
         {isEmpty ? (
           <div
             className="flex flex-col items-center justify-center h-full gap-6"
             style={{ animation: "fadeSlideIn 0.4s ease-out" }}
           >
             <div>
-              <h1
-                className="text-2xl font-semibold text-center mb-1"
-                style={{ color: "#1e293b" }}
-              >
+              <h1 className="text-2xl font-semibold text-center mb-1" style={{ color: "#1e293b" }}>
                 What are you working on?
               </h1>
               <p className="text-sm text-center" style={{ color: "#94a3b8" }}>
@@ -181,7 +181,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
                   style={{
                     background: "rgba(255,255,255,0.6)",
                     backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.8)",
+                    border: "1px solid #74c69d",
                     color: "#475569",
                   }}
                   onMouseEnter={(e) =>
@@ -191,7 +191,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
                     ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.6)")
                   }
                 >
-                  <span className="text-xl"></span>
                   <span className="leading-snug" style={{ color: "#334155", fontWeight: 500 }}>
                     {s.text}
                   </span>
@@ -215,10 +214,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
         <div
           className="max-w-2xl mx-auto flex items-end gap-3 px-4 py-3 rounded-2xl"
           style={{
-            background: "rgba(255,255,255,0.65)",
+            background: "rgba(255,255,255,0.75)",
             backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.85)",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
+            border: "1px solid #74c69d",
+            boxShadow: "0 4px 24px rgba(116,198,157,0.15)",
           }}
         >
           {/* Attach button */}
@@ -256,12 +255,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
             style={{
               background:
                 input.trim() && !isLoading
-                  ? "linear-gradient(135deg, #3b82f6, #6366f1)"
+                  ? "linear-gradient(135deg, #52b788, #74c69d)"
                   : "rgba(0,0,0,0.08)",
               color: input.trim() && !isLoading ? "#fff" : "#cbd5e1",
               boxShadow:
                 input.trim() && !isLoading
-                  ? "0 4px 12px rgba(99,102,241,0.35)"
+                  ? "0 4px 12px rgba(116,198,157,0.4)"
                   : "none",
             }}
             aria-label="Send message"
