@@ -16,14 +16,7 @@ interface ChatAreaProps {
 
 const TypingIndicator: React.FC = () => (
   <div className="flex items-end gap-3 mb-6">
-    <div
-      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-      style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
-      </svg>
-    </div>
+    <img src="/images.png" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
     <div
       className="px-4 py-3 rounded-2xl rounded-bl-sm"
       style={{
@@ -57,14 +50,7 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
     >
       {/* Avatar ฝั่ง AI */}
       {!isUser && (
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #6ee7b7, #3b82f6)" }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-            <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-          </svg>
-        </div>
+        <img src="/images.png" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
       )}
 
       <div
@@ -72,10 +58,10 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
           isUser ? "rounded-br-sm" : "rounded-bl-sm"
         }`}
         style={{
-          // ✅ ฝั่งคนถาม: เขียวพาสเทล | ฝั่ง AI: ขาว
+          // ฝั่งคนถาม: เขียวพาสเทล | ฝั่ง AI: ขาว
           background: isUser ? "#b7e4c7" : "#ffffff",
           color: isUser ? "#1a3d2b" : "#1e293b",
-          // ✅ ขอบเขียวทั้งสองฝั่ง
+          // ขอบเขียวทั้งสองฝั่ง
           border: "1px solid #74c69d",
           boxShadow: isUser
             ? "0 4px 15px rgba(116,198,157,0.3)"

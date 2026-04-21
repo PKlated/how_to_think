@@ -22,7 +22,7 @@ export async function sendMessage(
   sessionId?: string
 ): Promise<ChatResponse> {
 
-  const userId = localStorage.getItem("userId")
+  const userId = sessionStorage.getItem("userId")
 
   const res = await fetch("http://localhost:8000/chat", {
     method: "POST",
@@ -50,8 +50,8 @@ export async function signup(name: string, email: string, password: string) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || data.message);
-  localStorage.setItem("userId", data._id);
-  localStorage.setItem("user", JSON.stringify(data));
+  sessionStorage.setItem("userId", data._id);
+  sessionStorage.setItem("user", JSON.stringify(data));
   return data;
 }
 
@@ -64,8 +64,8 @@ export async function login(email: string, password: string) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || data.message);
-  localStorage.setItem("userId", data._id);
-  localStorage.setItem("user", JSON.stringify(data));
+  sessionStorage.setItem("userId", data._id);
+  sessionStorage.setItem("user", JSON.stringify(data));
   return data;
 }
 
@@ -74,7 +74,7 @@ export async function updateProfile(
   name: string,
   password: string
 ) {
-  const userId = localStorage.getItem("userId");
+  const userId = sessionStorage.getItem("userId");
   const res = await fetch("http://localhost:8000/api/user/update", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -91,8 +91,8 @@ export async function updateProfile(
 
 // ================= LOGOUT =================
 export function logout() {
-  localStorage.removeItem("userId");
-  localStorage.removeItem("user");
+  sessionStorage.removeItem("userId");
+  sessionStorage.removeItem("user");
 }
 
 // ================= SESSIONS =================
@@ -128,6 +128,14 @@ export async function createMessage(sessionId: string, role: string, content: st
 
 export async function getMessages(sessionId: string) {
   const res = await fetch(`http://localhost:8000/api/messages/${sessionId}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail)
+  return data
+}
+export async function deleteSession(sessionId: string) {
+  const res = await fetch(`http://localhost:8000/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  })
   const data = await res.json()
   if (!res.ok) throw new Error(data.detail)
   return data

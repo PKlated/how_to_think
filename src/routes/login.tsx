@@ -30,8 +30,8 @@ function LoginPage() {
       const user = await login(loginEmail, loginPassword)
 
       // เก็บ userId จาก backend
-      localStorage.setItem('userId', user._id)
-      localStorage.setItem('user', JSON.stringify(user))
+      sessionStorage.setItem('userId', user._id)
+      sessionStorage.setItem('user', JSON.stringify(user))
       window.dispatchEvent(new Event('user-changed'))
       navigate({ to: '/chat' })
     } catch (err: any) {
@@ -53,8 +53,8 @@ function LoginPage() {
       const user = await signup(signupName, signupEmail, signupPassword)
 
       // เก็บ userId จาก backend
-      localStorage.setItem('userId', user._id)
-      localStorage.setItem('user', JSON.stringify(user))
+      sessionStorage.setItem('userId', user._id)
+      sessionStorage.setItem('user', JSON.stringify(user))
       window.dispatchEvent(new Event('user-changed'))
       navigate({ to: '/chat' })
     } catch (err: any) {
@@ -158,7 +158,7 @@ function LoginPage() {
                 <input
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Email"
+                  placeholder="Email" autoComplete="off"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                 />
@@ -166,7 +166,7 @@ function LoginPage() {
                   type="password"
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Password"
+                  placeholder="Password" autoComplete="new-password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                 />
@@ -189,7 +189,7 @@ function LoginPage() {
                 <input
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Email"
+                  placeholder="Email" autoComplete="off"
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                 />
@@ -197,7 +197,7 @@ function LoginPage() {
                   type="password"
                   className={inputClass}
                   style={inputStyle}
-                  placeholder="Password"
+                  placeholder="Password" autoComplete="new-password"
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
                 />

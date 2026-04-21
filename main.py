@@ -157,3 +157,15 @@ def create_message(data: CreateMessageModel):
 def get_messages(session_id: str):
     docs = list(messages_col.find({"sessionId": ObjectId(session_id)}).sort("timestamp", 1))
     return [{"_id": str(d["_id"]), "role": d["role"], "content": d["content"], "timestamp": str(d["timestamp"])} for d in docs]
+
+# ===== ลบแชท =====
+@app.delete("/api/sessions/{session_id}")
+def delete_session(session_id: str):
+    session = sessions_col.find_one({"_id": ObjectId(session_id)})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    messages_col.delete_many({"sessionId": ObjectId(session_id)})
+    sessions_col.delete_one({"_id": ObjectId(session_id)})
+    
+    return {"message": "Session deleted"}

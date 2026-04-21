@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router'
 import { useState, useCallback, useEffect } from "react"
 import Sidebar from "../components/Sidebar"
 import type { ChatHistory } from "../components/Sidebar"
@@ -20,18 +20,26 @@ function ChatPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
-  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
-  if (typeof window !== "undefined") {
-    const id = localStorage.getItem("userId")
-    setUserId(id)
-  }
-}, [])
+    const syncUser = () => {
+      const id = sessionStorage.getItem("userId")
+      setUserId(id)
+      if (!id) {
+        setSessions([])
+        setActiveSessionId(null)
+        navigate({ to: "/login" })
+      }
+    }
+    syncUser()
+    window.addEventListener("user-changed", syncUser)
+    return () => window.removeEventListener("user-changed", syncUser)
+  }, [navigate])
 
-  // ===== โหลด sessions จาก DB =====
   useEffect(() => {
     if (!userId) return
     getSessions(userId).then((data) => {
@@ -44,11 +52,10 @@ function ChatPage() {
     })
   }, [userId])
 
-  // ===== โหลด messages เมื่อเลือก session =====
   useEffect(() => {
     if (!activeSessionId) return
     const session = sessions.find((s) => s.id === activeSessionId)
-    if (session && session.messages.length > 0) return // โหลดแล้ว
+    if (session && session.messages.length > 0) return
 
     getMessages(activeSessionId).then((data) => {
       setSessions((prev) =>
@@ -77,6 +84,10 @@ function ChatPage() {
 
   const handleNewChat = useCallback(() => setActiveSessionId(null), [])
   const handleSelectChat = useCallback((id: string) => setActiveSessionId(id), [])
+  const handleDeleteChat = useCallback((id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id))
+    if (activeSessionId === id) setActiveSessionId(null)
+  }, [activeSessionId])
 
   const handleSendMessage = useCallback(async (content: string) => {
     const userMsg: Message = { id: uid(), role: "user", content, timestamp: new Date() }
@@ -85,7 +96,6 @@ function ChatPage() {
     let currentSession: ChatSession | undefined
 
     if (!sessionId) {
-      // สร้าง session ใหม่ใน DB
       const title = generateTitle(content)
       if (!userId) return
       const newSessionDB = await createSession(userId!, title)
@@ -110,9 +120,7 @@ function ChatPage() {
       currentSession = sessions.find((s) => s.id === sessionId)
     }
 
-    // เก็บ user message ลง DB
     await createMessage(sessionId!, "user", content)
-
     setIsLoading(true)
 
     try {
@@ -136,7 +144,6 @@ function ChatPage() {
         )
       )
 
-      // เก็บ AI message ลง DB
       await createMessage(sessionId!, "assistant", res.answer)
 
     } catch {
@@ -165,6 +172,7 @@ function ChatPage() {
         userName=""
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
       />
       <ChatArea
         messages={activeSession?.messages ?? []}
@@ -176,5 +184,12 @@ function ChatPage() {
 }
 
 export const Route = createFileRoute('/chat')({
+  beforeLoad: () => {
+    if (typeof window === 'undefined') return
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      throw redirect({ to: '/login' })
+    }
+  },
   component: ChatPage,
 })
