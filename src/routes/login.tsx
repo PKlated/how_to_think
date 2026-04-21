@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { login, signup } from '../server/ai' // ✅ ใช้ API จริง
+import { login, signup } from '../server/ai' 
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -29,7 +29,7 @@ function LoginPage() {
     try {
       const user = await login(loginEmail, loginPassword)
 
-      // ✅ เก็บ userId จาก backend
+      // เก็บ userId จาก backend
       localStorage.setItem('userId', user._id)
       localStorage.setItem('user', JSON.stringify(user))
       window.dispatchEvent(new Event('user-changed'))
@@ -52,7 +52,7 @@ function LoginPage() {
     try {
       const user = await signup(signupName, signupEmail, signupPassword)
 
-      // ✅ เก็บ userId จาก backend
+      // เก็บ userId จาก backend
       localStorage.setItem('userId', user._id)
       localStorage.setItem('user', JSON.stringify(user))
       window.dispatchEvent(new Event('user-changed'))
