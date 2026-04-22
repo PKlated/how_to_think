@@ -15,6 +15,7 @@ interface SidebarProps {
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
+  isGuest?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -24,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewChat,
   onSelectChat,
   onDeleteChat,
+  isGuest,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -150,7 +152,25 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Chat History */}
+        {/* Guest Banner */}
+{!isCollapsed && isGuest && (
+  <div style={{
+    margin: '0 12px 12px',
+    padding: '10px 14px',
+    borderRadius: '12px',
+    background: 'rgba(255,255,255,0.4)',
+    fontSize: '12px',
+    color: '#2d6a4f',
+    textAlign: 'center',
+    lineHeight: 1.6,
+  }}>
+    🔒 ล็อกอินเพื่อบันทึกประวัติแชท
+    <br />
+    <a href="/login" style={{ color: '#1b4332', fontWeight: 600 }}>เข้าสู่ระบบ</a>
+  </div>
+)}
+
+        {/* Chat History */}  
         <div className="flex-1 overflow-y-auto px-3 space-y-0.5" style={{ scrollbarWidth: "none" }}>
           {!isCollapsed && filteredHistory.length > 0 && (
             <>

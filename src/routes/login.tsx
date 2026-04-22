@@ -18,49 +18,65 @@ function LoginPage() {
 
   // ===== LOGIN =====
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+  e.preventDefault()
+  setError('')
 
-    if (!loginEmail || !loginPassword) {
-      setError('กรุณากรอก Email และ Password')
-      return
-    }
-
-    try {
-      const user = await login(loginEmail, loginPassword)
-
-      // เก็บ userId จาก backend
-      sessionStorage.setItem('userId', user._id)
-      sessionStorage.setItem('user', JSON.stringify(user))
-      window.dispatchEvent(new Event('user-changed'))
-      navigate({ to: '/chat' })
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
-    }
+  if (!loginEmail || !loginPassword) {
+    setError('กรุณากรอก Email และ Password')
+    return
   }
+
+  if (!loginEmail.includes('@')) {
+    setError('Email ต้องมีเครื่องหมาย @')
+    return
+  }
+
+  if (loginPassword.length < 8) {
+    setError('Password ต้องมีอย่างน้อย 8 ตัวอักษร')
+    return
+  }
+
+  try {
+    const user = await login(loginEmail, loginPassword)
+    sessionStorage.setItem('userId', user._id)
+    sessionStorage.setItem('user', JSON.stringify(user))
+    window.dispatchEvent(new Event('user-changed'))
+    navigate({ to: '/chat' })
+  } catch (err: any) {
+    setError(err.message || 'Login failed')
+  }
+}
 
   // ===== SIGNUP =====
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+  e.preventDefault()
+  setError('')
 
-    if (!signupName || !signupEmail || !signupPassword) {
-      setError('กรุณากรอกข้อมูลให้ครบ')
-      return
-    }
-
-    try {
-      const user = await signup(signupName, signupEmail, signupPassword)
-
-      // เก็บ userId จาก backend
-      sessionStorage.setItem('userId', user._id)
-      sessionStorage.setItem('user', JSON.stringify(user))
-      window.dispatchEvent(new Event('user-changed'))
-      navigate({ to: '/chat' })
-    } catch (err: any) {
-      setError(err.message || 'Signup failed')
-    }
+  if (!signupName || !signupEmail || !signupPassword) {
+    setError('กรุณากรอกข้อมูลให้ครบ')
+    return
   }
+
+  if (!signupEmail.includes('@')) {
+    setError('Email ต้องมีเครื่องหมาย @')
+    return
+  }
+
+  if (signupPassword.length < 8) {
+    setError('Password ต้องมีอย่างน้อย 8 ตัวอักษร')
+    return
+  }
+
+  try {
+    const user = await signup(signupName, signupEmail, signupPassword)
+    sessionStorage.setItem('userId', user._id)
+    sessionStorage.setItem('user', JSON.stringify(user))
+    window.dispatchEvent(new Event('user-changed'))
+    navigate({ to: '/chat' })
+  } catch (err: any) {
+    setError(err.message || 'Signup failed')
+  }
+}
 
   const inputClass =
     "w-full px-5 py-4 rounded-2xl text-sm outline-none transition-all"
