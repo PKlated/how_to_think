@@ -30,16 +30,10 @@ TOP_RESULTS   = 3
 
 # ── System Prompt ───────────────────────────────────────
 SYSTEM_PROMPT = """
-You are a recycling expert assistant.
-Your job is to help users understand:
-- What type of waste something is
-- How to recycle it at home step by step
-- The pros and cons of recycling
-
-Always answer in English.
-Be clear and practical.
-If the question is not about recycling or waste management,
-reply exactly: "I can only help with recycling-related questions."
+You are a helpful assistant with expertise in recycling and waste management.
+You can answer any question, but when asked about recycling, waste, or materials,
+use the provided context to give accurate and practical answers.
+Answer in the same language as the question.
 """
 
 lemmatizer = WordNetLemmatizer()
@@ -377,66 +371,18 @@ def _ingest_text(collection, raw_text: str, source_id: str):
 
     print(f"  ingest เสร็จแล้ว: {source_id}\n")
 
-
-# ── เช็คคำถาม ────────────────────────────────────────────
-
-def has_recycling_keyword(question: str) -> bool:
-    """
-    เช็ค keyword ทั้งภาษาอังกฤษและภาษาไทย
-    """
-    keywords_en = [
-        "recycle", "recycling", "waste", "trash", "garbage",
-        "plastic", "metal", "organic", "electronic", "battery",
-        "compost", "dispose", "hazardous", "leather", "textile",
-        "aluminum", "copper", "iron", "chemical", "wood", "paper",
-    ]
-    # คำภาษาไทยที่เกี่ยวข้องกับการรีไซเคิล
-    keywords_th = [
-        "รีไซเคิล", "ขยะ", "เศษ", "พลาสติก", "โลหะ", "กระดาษ",
-        "แก้ว", "แบตเตอรี่", "อิเล็กทรอนิกส์", "ปุ๋ยหมัก", "กำจัด",
-        "อันตราย", "อลูมิเนียม", "ทองแดง", "เหล็ก", "สารเคมี", "ไม้",
-        "หนัง", "ผ้า", "วัสดุ", "นำกลับ", "ทิ้ง", "คัดแยก",
-    ]
-    q = question.lower()
-    return any(kw in q for kw in keywords_en + keywords_th)
-
-
-def is_relevant(distances: list[float]) -> bool:
-    if not distances:
-        return False
-    return distances[0] <= 300
-
-
 # ── ถามคำถาม (รองรับภาษาไทย) ────────────────────────────
-
 def ask(collection, question: str, history: list) -> str:
-    """
-    Flow:
-    1. ตรวจสอบภาษาของคำถาม
-    2. ถ้าเป็นภาษาไทย → แปลเป็นอังกฤษก่อน
-    3. เช็ค keyword และ relevance
-    4. ค้นหาใน ChromaDB ด้วยคำถามภาษาอังกฤษ
-    5. ได้คำตอบจาก LLM เป็นภาษาอังกฤษ
-    6. ถ้าคำถามต้นฉบับเป็นภาษาไทย → แปลคำตอบกลับเป็นภาษาไทย
-    """
-
     # ── Step 1: ตรวจสอบภาษา ─────────────────────────────
-    lang            = detect_language(question)
-    is_thai         = (lang == "th")
-    question_for_rag = question  # คำถามที่จะใช้ค้นหาใน RAG
+    lang             = detect_language(question)
+    is_thai          = (lang == "th")
+    question_for_rag = question
 
     if is_thai:
         print(f"  [ตรวจพบภาษาไทย] กำลังแปลคำถาม...")
         question_for_rag = translate_th_to_en(question)
 
-    # ── Step 2: เช็ค keyword (ใช้คำถามต้นฉบับ เพื่อให้จับคำไทยได้ด้วย) ──
-    if not has_recycling_keyword(question) and not has_recycling_keyword(question_for_rag):
-        not_relevant_msg = "I can only help with recycling-related questions."
-        if is_thai:
-            return "ขอโทษครับ ฉันช่วยตอบได้เฉพาะคำถามเกี่ยวกับการรีไซเคิลและการจัดการขยะเท่านั้น"
-        return not_relevant_msg
-
-    # ── Step 3: สร้าง embedding จากคำถามภาษาอังกฤษ ────────
+    # ── Step 2: ค้นหาใน ChromaDB ทุกครั้ง ───────────────
     clean_question = preprocess(question_for_rag)
 
     query_embedding = ollama.embeddings(
@@ -451,31 +397,32 @@ def ask(collection, question: str, history: list) -> str:
     )
 
     distances = results["distances"][0]
-    print(f"  DEBUG score: {distances[0]:.3f}")
+    best_score = distances[0]
+    print(f"  DEBUG score: {best_score:.3f}")
 
-    # ── Step 4: เช็ค relevance score ────────────────────
-    if not is_relevant(distances):
-        if is_thai:
-            return "ขอโทษครับ ฉันช่วยตอบได้เฉพาะคำถามเกี่ยวกับการรีไซเคิลและการจัดการขยะเท่านั้น"
-        return "I can only help with recycling-related questions."
+    # ── Step 3: ตัดสินใจว่าจะใช้ RAG หรือ LLM ปกติ ──────
+    SCORE_THRESHOLD = 300  # ปรับได้ตามต้องการ
 
-    context = "\n".join(results["documents"][0])
-
-    # ── Step 5: ส่งคำถามภาษาอังกฤษไปยัง LLM ─────────────
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        *history,
-        {
-            "role": "user",
-            "content": f"""
-Use this context to answer the question.
+    if best_score <= SCORE_THRESHOLD:
+        # มีข้อมูลใน DB → ใช้ RAG
+        print("  [ใช้ RAG]")
+        context = "\n".join(results["documents"][0])
+        user_content = f"""Use this context to answer the question.
 
 Context:
 {context}
 
-Question: {question_for_rag}
-"""
-        }
+Question: {question_for_rag}"""
+    else:
+        # ไม่มีข้อมูลใน DB → ตอบจาก LLM ปกติ
+        print("  [ใช้ LLM ปกติ]")
+        user_content = question_for_rag
+
+    # ── Step 4: ส่งให้ LLM ───────────────────────────────
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        *history,
+        {"role": "user", "content": user_content}
     ]
 
     response = ollama.chat(
@@ -485,7 +432,7 @@ Question: {question_for_rag}
 
     answer_en = response["message"]["content"]
 
-    # ── Step 6: แปลคำตอบกลับเป็นภาษาไทย (ถ้าคำถามเป็นไทย) ──
+    # ── Step 5: แปลกลับเป็นไทยถ้าคำถามเป็นไทย ───────────
     if is_thai:
         print("  [กำลังแปลคำตอบเป็นภาษาไทย...]")
         return translate_en_to_th(answer_en)
