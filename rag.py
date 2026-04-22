@@ -8,6 +8,7 @@ import re
 import json
 import hashlib
 import nltk
+import trafilatura
 
 from pypdf import PdfReader
 from nltk.stem import WordNetLemmatizer
@@ -21,6 +22,7 @@ nltk.download("omw-1.4", quiet=True)
 # ── Settings ────────────────────────────────────────────
 PDF_FOLDER    = "dataset/pdfs"
 INGESTED_FILE = "dataset/ingested.json"
+URLS_FILE     = "dataset/urls.json"
 CHUNK_SIZE    = 150
 CHUNK_OVERLAP = 30
 TOP_RESULTS   = 3
@@ -163,6 +165,31 @@ def save_ingested(ingested: dict):
         json.dump(ingested, f, indent=2)
 
 
+# ── urls.json ────────────────────────────────────────────
+
+def load_urls() -> list[str]:
+    """
+    โหลดรายการ URL จาก dataset/urls.json
+    ถ้าไม่มีไฟล์ จะสร้างไฟล์ตัวอย่างให้อัตโนมัติ
+    """
+    if not os.path.exists(URLS_FILE):
+        os.makedirs(os.path.dirname(URLS_FILE), exist_ok=True)
+        example = {
+            "urls": [
+                "https://www.epa.gov/recycle/how-do-i-recycle-common-recyclables",
+                "https://earth911.com/recycling-guide/"
+            ]
+        }
+        with open(URLS_FILE, "w") as f:
+            json.dump(example, f, indent=2)
+        print(f"สร้างไฟล์ตัวอย่าง {URLS_FILE} แล้ว — แก้ไข URL ในไฟล์นั้นได้เลย\n")
+        return example["urls"]
+
+    with open(URLS_FILE, "r") as f:
+        data = json.load(f)
+    return data.get("urls", [])
+
+
 # ── ลบ chunks เก่า ───────────────────────────────────────
 
 def remove_old_chunks(collection, filename: str):
@@ -244,6 +271,112 @@ def ingest_pdfs(collection):
     else:
         print("ไม่มีไฟล์ใหม่ที่ต้อง ingest\n")
 
+# ── Ingest URLs ──────────────────────────────────────────
+
+def fetch_text_from_url(url: str) -> str | None:
+    """
+    ดึงเนื้อหาหลักจาก URL ด้วย trafilatura
+    - ตัด menu, ads, footer ออกอัตโนมัติ
+    - คืนค่า None ถ้าดึงไม่ได้
+    """
+    try:
+        downloaded = trafilatura.fetch_url(url)
+        if not downloaded:
+            print(f"  ดึง URL ไม่ได้: {url}")
+            return None
+
+        text = trafilatura.extract(
+            downloaded,
+            include_comments=False,   # ไม่เอา comment
+            include_tables=True,      # เอาตาราง
+            no_fallback=False,        # ถ้า extract ไม่ได้ให้ fallback
+        )
+
+        if not text or len(text.strip()) < 100:
+            print(f"  เนื้อหาน้อยเกินไป: {url}")
+            return None
+
+        return text
+
+    except Exception as e:
+        print(f"  เกิดข้อผิดพลาดกับ URL {url}: {e}")
+        return None
+
+
+def ingest_urls(collection):
+    """
+    อ่าน URL จาก dataset/urls.json แล้ว ingest เข้า ChromaDB
+    ใช้ hash ของ URL เป็น key — ถ้า ingest ไปแล้วจะข้าม
+    """
+    urls     = load_urls()
+    ingested = load_ingested()
+    updated  = False
+
+    if not urls:
+        print("ไม่มี URL ใน urls.json\n")
+        return
+
+    print(f"พบ {len(urls)} URL ใน urls.json")
+
+    for url in urls:
+        url_key  = f"url::{get_url_hash(url)}"   # key รูปแบบ "url::<md5>"
+
+        if url_key in ingested:
+            print(f"ข้าม (มีอยู่แล้ว): {url}")
+            continue
+
+        print(f"กำลังดึงข้อมูลจาก: {url}")
+        raw_text = fetch_text_from_url(url)
+
+        if not raw_text:
+            continue
+
+        print(f"  ได้ข้อความ {len(raw_text)} ตัวอักษร")
+        _ingest_text(collection, raw_text, source_id=url_key)
+
+        ingested[url_key] = url          # เก็บ URL จริงไว้ดูย้อนหลังได้
+        updated = True
+        print(f"  ingest เสร็จ: {url}\n")
+
+    if updated:
+        save_ingested(ingested)
+        print("บันทึก ingested.json แล้ว\n")
+    else:
+        print("ไม่มี URL ใหม่ที่ต้อง ingest\n")
+
+
+# ── ingest helper (ใช้ร่วมกันทั้ง PDF และ URL) ───────────
+
+def _ingest_text(collection, raw_text: str, source_id: str):
+    """
+    รับข้อความดิบ → clean → chunk → embed → เก็บใน ChromaDB
+    """
+    clean  = preprocess(raw_text)
+    chunks = chunk_text(clean)
+    print(f"  สร้าง embeddings {len(chunks)} chunks...")
+
+    for i, chunk in enumerate(chunks):
+        try:
+            embedding = ollama.embeddings(
+                model="nomic-embed-text",
+                prompt=chunk
+            )["embedding"]
+
+            collection.add(
+                ids=[f"{source_id}_{i}"],
+                embeddings=[embedding],
+                documents=[chunk],
+                metadatas=[{"source": source_id, "chunk_index": i}]
+            )
+
+            if (i + 1) % 20 == 0:
+                print(f"    เสร็จแล้ว {i + 1}/{len(chunks)}")
+
+        except Exception as e:
+            print(f"  ข้าม chunk {i}: {e}")
+
+    print(f"  ingest เสร็จแล้ว: {source_id}\n")
+
 
 # ── เช็คคำถาม ────────────────────────────────────────────
 
@@ -318,7 +451,7 @@ def ask(collection, question: str, history: list) -> str:
     )
 
     distances = results["distances"][0]
-    print(f"  DEBUG score: {1 - distances[0]:.3f}")
+    print(f"  DEBUG score: {distances[0]:.3f}")
 
     # ── Step 4: เช็ค relevance score ────────────────────
     if not is_relevant(distances):
@@ -369,6 +502,7 @@ def main():
     collection    = chroma_client.get_or_create_collection("recycling_rag")
 
     ingest_pdfs(collection)
+    ingest_urls(collection)
 
     history = []
     print("พิมพ์ 'quit' หรือ 'ออก' เพื่อออกจากโปรแกรม\n")
