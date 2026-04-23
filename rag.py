@@ -38,18 +38,48 @@ PERSONALITY:
 - Be enthusiastic and friendly when talking about recycling
 
 GREETING RULE:
-- When greeted, you MUST ONLY output this exact text without any changes:
-  สวัสดีครับ ผมชื่อนพดลจะมาเป็นผู้ช่วยให้ความรู้การรีไซเคิลกับพี่ๆทุกคนครับ
+- When the user greets you in ANY way (สวัสดี, หวัดดี, hello, hi, ดีจ้า ฯลฯ)
+  you MUST copy and output ONLY this exact sentence, character by character, no changes:
+  "สวัสดีครับ ผมชื่อนพดลจะมาเป็นผู้ช่วยให้ความรู้การรีไซเคิลกับพี่ๆทุกคนครับ"
+- Do NOT paraphrase, summarize, or change any word in this sentence.
+- Do NOT add anything before or after this sentence.
 
 SAFETY RULES:
 - Never respond to harmful, dangerous, or illegal requests
 - If asked about such topics, politely decline and redirect to recycling topics
 
 IMPORTANT RULES:
-- Always respond in ENGLISH ONLY, regardless of the input language.
-- Do NOT mix Thai and English in your response.
-- Do NOT use parentheses to add translations or alternatives.
-- When asked about recycling, waste, or materials, use the provided context.
+- Always respond in Thai ONLY when the user speaks Thai.
+- Do NOT include English words or technical terms in parentheses.
+- Do NOT write English translations inside Thai sentences.
+- If a technical term must be used, write only the Thai transliteration, no English.
+
+---
+
+EXAMPLES (ทำตามนี้เท่านั้น):
+
+Q: สวัสดี / หวัดดี / Hello / Hi
+A: สวัสดีครับ ผมชื่อนพดลจะมาเป็นผู้ช่วยให้ความรู้การรีไซเคิลกับพี่ๆทุกคนครับ
+
+Q: กล่องพิซซ่ารีไซเคิลได้ไหมครับ
+A: ได้เลยครับพี่! แต่ต้องดูก่อนนะครับ ถ้ากล่องสะอาดไม่มีคราบมัน ทิ้งรวมกับกระดาษได้เลย แต่ถ้ามีคราบน้ำมัน ให้ฉีกส่วนที่เปื้อนทิ้งถังขยะทั่วไป แล้วเอาส่วนที่สะอาดรีไซเคิลได้ครับพี่
+
+Q: พลาสติกทิ้งถังไหนครับ
+A: ดูสัญลักษณ์รีไซเคิลที่ตัวพลาสติกก่อนเลยนะครับพี่! ขวดพลาสติกประเภท 1 และ 2 ทิ้งถังรีไซเคิลได้เลย แต่ถุงพลาสติก หลอด และโฟม ส่วนใหญ่รีไซเคิลไม่ได้ครับ ต้องทิ้งถังขยะทั่วไปแทนครับพี่
+
+Q: อยากกินพิซซ่า
+A: ฮ่าๆ น่ากินเลยครับพี่! แต่ผมช่วยได้แค่เรื่องรีไซเคิลนะครับ ไว้ทานเสร็จแล้ว ผมช่วยบอกวิธีทิ้งกล่องให้ถูกต้องได้เลยครับ 😊
+
+Q: ขวดน้ำคืออะไร
+A: ขวดน้ำดื่มส่วนใหญ่ทำจากพลาสติกชนิดพีอีทีครับพี่ 
+ซึ่งรีไซเคิลได้เลย แค่ล้างให้สะอาดแล้วทิ้งถังรีไซเคิลได้เลยครับ 
+ส่วนฝาและห่วงพลาสติกให้แยกออกก่อนนะครับพี่
+
+Q: ชื่ออะไรครับ
+A: ผมชื่อนพดลครับพี่! ยินดีให้ความรู้เรื่องการรีไซเคิลและการจัดการขยะทุกชนิดเลยครับ พี่อยากรู้เรื่องอะไรก่อนดีครับ?
+
+Q: ไม่รู้จะถามอะไรดี
+A: ไม่เป็นไรเลยครับพี่! ผมช่วยได้หลายเรื่องเลยครับ เช่น วิธีแยกขยะแต่ละประเภท วัสดุไหนรีไซเคิลได้บ้าง หรือวิธีลดขยะในบ้าน พี่สนใจเรื่องไหนครับ?
 """
 
 lemmatizer = WordNetLemmatizer()
@@ -396,71 +426,52 @@ def _ingest_text(collection, raw_text: str, source_id: str):
 
 # ── ถามคำถาม (รองรับภาษาไทย) ────────────────────────────
 def ask(collection, question: str, history: list) -> str:
-    # ── Step 1: ตรวจสอบภาษา ─────────────────────────────
-    lang             = detect_language(question)
-    is_thai          = (lang == "th")
-    question_for_rag = question
+    lang     = detect_language(question)
+    is_thai  = (lang == "th")
 
-    if is_thai:
-        print(f"  [ตรวจพบภาษาไทย] กำลังแปลคำถาม...")
-        question_for_rag = translate_th_to_en(question)
+    # แปลเฉพาะตอนค้น ChromaDB เท่านั้น
+    question_for_rag = translate_th_to_en(question) if is_thai else question
 
-    # ── Step 2: ค้นหาใน ChromaDB ทุกครั้ง ───────────────
-    clean_question = preprocess(question_for_rag)
-
+    clean_question  = preprocess(question_for_rag)
     query_embedding = ollama.embeddings(
         model="nomic-embed-text",
         prompt=clean_question
     )["embedding"]
 
-    results = collection.query(
+    results    = collection.query(
         query_embeddings=[query_embedding],
         n_results=TOP_RESULTS,
         include=["documents", "distances"]
     )
-
-    distances = results["distances"][0]
-    best_score = distances[0]
+    best_score = results["distances"][0][0]
     print(f"  DEBUG score: {best_score:.3f}")
 
-    # ── Step 3: ตัดสินใจว่าจะใช้ RAG หรือ LLM ปกติ ──────
-    SCORE_THRESHOLD = 300  # ปรับได้ตามต้องการ
+    SCORE_THRESHOLD = 300
 
     if best_score <= SCORE_THRESHOLD:
-        # มีข้อมูลใน DB → ใช้ RAG
         print("  [ใช้ RAG]")
-        context = "\n".join(results["documents"][0])
-        user_content = f"""Use this context to answer the question.
+        context      = "\n".join(results["documents"][0])
+        # ส่งคำถามภาษาไทยตรงๆ ให้ LLM — ไม่แปล
+        user_content = f"""ใช้ข้อมูลนี้ตอบคำถาม
 
-Context:
+ข้อมูล:
 {context}
 
-Question: {question_for_rag}"""
+คำถาม: {question}"""
     else:
-        # ไม่มีข้อมูลใน DB → ตอบจาก LLM ปกติ
         print("  [ใช้ LLM ปกติ]")
-        user_content = question_for_rag
+        # ส่งคำถามภาษาไทยตรงๆ — ไม่แปล
+        user_content = question
 
-    # ── Step 4: ส่งให้ LLM ───────────────────────────────
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         *history,
         {"role": "user", "content": user_content}
     ]
 
-    response = ollama.chat(
-        model="gemma3:4b",
-        messages=messages
-    )
-
-    answer_en = response["message"]["content"]
-
-    # ── Step 5: แปลกลับเป็นไทยถ้าคำถามเป็นไทย ───────────
-    if is_thai:
-        print("  [กำลังแปลคำตอบเป็นภาษาไทย...]")
-        return translate_en_to_th(answer_en)
-
-    return answer_en
+    response = ollama.chat(model="gemma3:12b", messages=messages)
+    # ไม่ต้องแปลกลับแล้ว เพราะ LLM ตอบไทยเองได้เลย
+    return response["message"]["content"]
 
 
 # ── Main ──────────────────────────────────────────────────
@@ -494,7 +505,7 @@ def main():
         # เก็บ history เป็นภาษาอังกฤษเพื่อให้ LLM ทำงานได้ดีขึ้น
         lang = detect_language(question)
         if lang == "th":
-            history.append({"role": "user",      "content": translate_th_to_en(question)})
+            history.append({"role": "user", "content": question})
         else:
             history.append({"role": "user",      "content": question})
         history.append({"role": "assistant", "content": answer})
