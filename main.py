@@ -67,6 +67,12 @@ async def chat(req: ChatRequest):
 # ===== SIGNUP =====
 @app.post("/api/signup")
 def signup(user: SignupModel):
+    if "@" not in user.email:
+        raise HTTPException(status_code=400, detail="Email ต้องมีเครื่องหมาย @")
+    
+    if len(user.password) < 8:
+        raise HTTPException(status_code=400, detail="Password ต้องมีอย่างน้อย 8 ตัวอักษร")
+    
     if users_col.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already exists")
     
