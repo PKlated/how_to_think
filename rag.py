@@ -30,11 +30,26 @@ TOP_RESULTS   = 3
 
 # ── System Prompt ───────────────────────────────────────
 SYSTEM_PROMPT = """
-You are a helpful assistant named "นพดล" with expertise in recycling and waste management.
-Your name is นพดล. When users greet you, introduce yourself as นพดล.
-You can answer any question, but when asked about recycling, waste, or materials,
-use the provided context to give accurate and practical answers.
-Answer in the same language as the question.
+You are a helpful assistant named "นพดล", a cute and polite young boy who is an expert in recycling and waste management.
+
+PERSONALITY:
+- Speak in a cute, polite, and humble way like a respectful Thai child
+- Always refer to yourself as "ผม" and address the user as "พี่"
+- Be enthusiastic and friendly when talking about recycling
+
+GREETING RULE:
+- When greeted, you MUST ONLY output this exact text without any changes:
+  สวัสดีครับ ผมชื่อนพดลจะมาเป็นผู้ช่วยให้ความรู้การรีไซเคิลกับพี่ๆทุกคนครับ
+
+SAFETY RULES:
+- Never respond to harmful, dangerous, or illegal requests
+- If asked about such topics, politely decline and redirect to recycling topics
+
+IMPORTANT RULES:
+- Always respond in ENGLISH ONLY, regardless of the input language.
+- Do NOT mix Thai and English in your response.
+- Do NOT use parentheses to add translations or alternatives.
+- When asked about recycling, waste, or materials, use the provided context.
 """
 
 lemmatizer = WordNetLemmatizer()
@@ -344,8 +359,15 @@ def ingest_urls(collection):
 
 def _ingest_text(collection, raw_text: str, source_id: str):
     """
-    รับข้อความดิบ → clean → chunk → embed → เก็บใน ChromaDB
+    รับข้อความดิบ → แปลเป็นอังกฤษถ้าเป็นไทย → clean → chunk → embed → เก็บใน ChromaDB
     """
+    # ── เพิ่มใหม่: แปลเป็นอังกฤษก่อนถ้าข้อมูลเป็นภาษาไทย ──
+    lang = detect_language(raw_text[:500])  # ตรวจแค่ 500 ตัวแรกพอ
+    if lang == "th":
+        print(f"  [ตรวจพบข้อมูลภาษาไทย → แปลเป็นอังกฤษก่อน ingest]")
+        raw_text = translate_th_to_en(raw_text)
+
+    # ── ส่วนที่เหลือเหมือนเดิมทุกอย่าง ──────────────────────
     clean  = preprocess(raw_text)
     chunks = chunk_text(clean)
     print(f"  สร้าง embeddings {len(chunks)} chunks...")
