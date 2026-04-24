@@ -150,8 +150,13 @@ Q: อยากกินพิซซ่า
 A: ฮ่าๆ น่ากินเลยครับพี่! แต่ผมช่วยได้แค่เรื่องรีไซเคิลนะครับ ไว้ทานเสร็จแล้ว ผมช่วยบอกวิธีทิ้งกล่องให้ถูกต้องได้เลยครับ 😊
 
 Q: ขวดน้ำคืออะไร
+<<<<<<< HEAD
 A: ขวดน้ำดื่มส่วนใหญ่ทำจากพลาสติกชนิดพีอีทีครับพี่
 ซึ่งรีไซเคิลได้เลย แค่ล้างให้สะอาดแล้วทิ้งถังรีไซเคิลได้เลยครับ
+=======
+A: ขวดน้ำดื่มส่วนใหญ่ทำจากพลาสติกชนิดพีอีทีครับพี่ 
+ซึ่งรีไซเคิลได้เลย แค่ล้างให้สะอาดแล้วทิ้งถังรีไซเคิลได้เลยครับ 
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
 ส่วนฝาและห่วงพลาสติกให้แยกออกก่อนนะครับพี่
 
 Q: ชื่ออะไรครับ
@@ -467,6 +472,7 @@ def _ingest_text(collection, raw_text: str, source_id: str):
 
     print(f"  ingest เสร็จแล้ว: {source_id}\n")
 
+<<<<<<< HEAD
 
 # ── Ingest PDF ───────────────────────────────────────────
 
@@ -680,6 +686,17 @@ def ask(collection, question: str, history: list, filter_prompt: str | None) -> 
 
     # ── Step 2: ค้นหาใน ChromaDB ────────────────────────
     clean_q         = preprocess(question_for_rag)
+=======
+# ── ถามคำถาม (รองรับภาษาไทย) ────────────────────────────
+def ask(collection, question: str, history: list) -> str:
+    lang     = detect_language(question)
+    is_thai  = (lang == "th")
+
+    # แปลเฉพาะตอนค้น ChromaDB เท่านั้น
+    question_for_rag = translate_th_to_en(question) if is_thai else question
+
+    clean_question  = preprocess(question_for_rag)
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
     query_embedding = ollama.embeddings(
         model="nomic-embed-text",
         prompt=clean_q
@@ -693,27 +710,46 @@ def ask(collection, question: str, history: list, filter_prompt: str | None) -> 
     best_score = results["distances"][0][0]
     print(f"  DEBUG score: {best_score:.3f}")
 
+<<<<<<< HEAD
     # ── Step 3: เลือก RAG หรือ LLM ปกติ ────────────────
     if best_score <= SCORE_THRESHOLD:
         print("  [ใช้ RAG]")
         context      = "\n".join(results["documents"][0])
+=======
+    SCORE_THRESHOLD = 300
+
+    if best_score <= SCORE_THRESHOLD:
+        print("  [ใช้ RAG]")
+        context      = "\n".join(results["documents"][0])
+        # ส่งคำถามภาษาไทยตรงๆ ให้ LLM — ไม่แปล
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
         user_content = f"""ใช้ข้อมูลนี้ตอบคำถาม
 
 ข้อมูล:
 {context}
 
+<<<<<<< HEAD
 คำถาม: {clean_question}"""
     else:
         print("  [ใช้ LLM ปกติ]")
         user_content = clean_question
 
     # ── Step 4: ส่งให้ LLM หลัก ─────────────────────────
+=======
+คำถาม: {question}"""
+    else:
+        print("  [ใช้ LLM ปกติ]")
+        # ส่งคำถามภาษาไทยตรงๆ — ไม่แปล
+        user_content = question
+
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         *history,
         {"role": "user", "content": user_content}
     ]
 
+<<<<<<< HEAD
     response   = ollama.chat(model=LLM_MODEL, messages=messages)
     answer_out = response["message"]["content"]
 
@@ -722,6 +758,11 @@ def ask(collection, question: str, history: list, filter_prompt: str | None) -> 
         answer_out = apply_filter(answer_out, filter_prompt)
 
     return answer_out
+=======
+    response = ollama.chat(model="gemma3:12b", messages=messages)
+    # ไม่ต้องแปลกลับแล้ว เพราะ LLM ตอบไทยเองได้เลย
+    return response["message"]["content"]
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
 
 
 # ── Main ──────────────────────────────────────────────────
@@ -755,8 +796,17 @@ def main():
         answer = ask(collection, question, history, filter_prompt)
         print(f"\nAI: {answer}\n")
 
+<<<<<<< HEAD
         # เก็บ history เฉพาะคำถามที่ผ่าน guard แล้ว
         history.append({"role": "user",      "content": question})
+=======
+        # เก็บ history เป็นภาษาอังกฤษเพื่อให้ LLM ทำงานได้ดีขึ้น
+        lang = detect_language(question)
+        if lang == "th":
+            history.append({"role": "user", "content": question})
+        else:
+            history.append({"role": "user",      "content": question})
+>>>>>>> 041d70702d0675f32b0e5d059aa2b264194f869e
         history.append({"role": "assistant", "content": answer})
 
         if len(history) > 6:
