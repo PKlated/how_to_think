@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import chromadb
-from rag import ask, ingest_pdfs
+from rag import ask, ingest_pdfs, ingest_csvs, ingest_urls, load_filter_prompt
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
@@ -25,10 +25,15 @@ client = MongoClient(os.getenv("MONGODB_URI"))
 db = client["how_to_think"]
 users_col = db["User"]
 
-# ChromaDB
+# ===== ChromaDB + Ingest =====
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection("recycling_rag")
 ingest_pdfs(collection)
+ingest_csvs(collection)
+ingest_urls(collection)
+
+# ===== Filter Prompt (โหลดครั้งเดียวตอนเริ่ม) =====
+filter_prompt = load_filter_prompt()
 
 # ===== MODELS =====
 class ChatRequest(BaseModel):
@@ -54,7 +59,7 @@ class UpdateUserModel(BaseModel):
 # ===== CHAT =====
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    answer = ask(collection, req.message, req.history)
+    answer = ask(collection, req.message, req.history, filter_prompt)
     isRecyclable = "recycle" in answer.lower()
     confidence = 0.9 if isRecyclable else 0.6
     return {
