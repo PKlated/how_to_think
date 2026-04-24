@@ -125,10 +125,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
   };
 
   const suggestions = [
-    { text: "How to recycle plastic bottles?" },
-    { text: "How to dispose of old batteries?" },
-    { text: "Pros & cons of recycling paper" },
-    { text: "How to compost organic waste?" },
+    { text: "ขวดน้ำรีไซเคิลยังไง?" },
+    { text: "ขยะรีไซเคิลประเภทไหนที่สามารถนำไปใช้ใหม่ได้?" },
+    { text: "รีไซเคิลคืออะไร?" },
+    { text: "diy อะไรได้บ้าง?" },
   ];
 
   return (
