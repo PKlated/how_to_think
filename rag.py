@@ -30,7 +30,7 @@ CHUNK_SIZE         = 150
 CHUNK_OVERLAP      = 30
 TOP_RESULTS        = 3
 SCORE_THRESHOLD    = 300
-LLM_MODEL          = "gemma3:4b"   # ← เปลี่ยนโมเดลที่นี่ที่เดียว
+LLM_MODEL          = "gemma3:4b"  
 
 # ── Input Guard Settings ─────────────────────────────────
 MAX_INPUT_LENGTH = 800   # ตัดข้อความที่ยาวเกินออก
@@ -92,8 +92,10 @@ RECYCLING_KEYWORDS = [
     "recycle", "recycling", "รีไซเคิล", "waste", "ขยะ", "plastic", "พลาสติก",
     "paper", "กระดาษ", "glass", "แก้ว", "metal", "โลหะ", "trash", "garbage",
     "bin", "ถัง", "compost", "organic", "อินทรีย์", "e-waste", "battery",
-    "แบตเตอรี่", "can", "กระป๋อง", "bottle", "ขวด", "foam", "โฟม",
-    "disposal", "กำจัด", "separate", "แยก", "environment", "สิ่งแวดล้อม",
+    "แบตเตอรี่", "can", "กระป๋อง", "bottle", "ขวด", "foam", "โฟม","ผ้า", "เสื้อผ้า", 
+    "เสื้อ", "กางเกง", "กระโปรง", "cloth","fabric",
+    "textile", "clothing", "clothes", "shirt", "pants","disposal", "กำจัด", 
+    "separate", "แยก", "environment", "สิ่งแวดล้อม","diy",
     "green", "eco", "sustainable", "นพดล", "ชื่อ", "สวัสดี", "hello", "hi",
     "ช่วย", "แนะนำ", "อธิบาย", "คือ", "ทิ้ง", "วิธี", "ได้ไหม", "ถามว่า",
 ]
