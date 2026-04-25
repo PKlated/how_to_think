@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown from "react-markdown";
 
 export interface Message {
   id: string;
@@ -14,25 +14,17 @@ interface ChatAreaProps {
   onSendMessage: (content: string) => void;
 }
 
+// ===== Typing Indicator =====
 const TypingIndicator: React.FC = () => (
-  <div className="flex items-end gap-3 mb-6">
-    <img src="/images.png" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-    <div
-      className="px-4 py-3 rounded-2xl rounded-bl-sm"
-      style={{
-        background: "#ffffff",
-        border: "1px solid #74c69d",
-      }}
-    >
-      <div className="flex gap-1.5 items-center h-4">
+  <div className="flex items-end gap-3 mb-6 animate-fadeIn">
+    <img src="/images.png" className="w-7 h-7 rounded-full" />
+    <div className="px-4 py-3 rounded-2xl bg-white border border-[#74c69d] shadow-sm">
+      <div className="flex gap-1.5 items-center">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: "#74c69d",
-              animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-            }}
+            className="w-1.5 h-1.5 bg-[#74c69d] rounded-full animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
           />
         ))}
       </div>
@@ -40,46 +32,28 @@ const TypingIndicator: React.FC = () => (
   </div>
 );
 
+// ===== Message Bubble =====
 const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
   const isUser = message.role === "user";
 
   return (
     <div
-      className={`flex items-end gap-3 mb-4 ${isUser ? "flex-row-reverse" : ""}`}
-      style={{ animation: "fadeSlideIn 0.25s ease-out" }}
+      className={`flex items-end gap-3 mb-4 ${
+        isUser ? "flex-row-reverse" : ""
+      } animate-slideUp`}
     >
-      {/* Avatar ฝั่ง AI */}
-      {!isUser && (
-        <img src="/images.png" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-      )}
+      {!isUser && <img src="/images.png" className="w-7 h-7 rounded-full" />}
 
       <div
-        className={`max-w-[72%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-          isUser ? "rounded-br-sm" : "rounded-bl-sm"
-        }`}
-        style={{
-          // ฝั่งคนถาม: เขียวพาสเทล | ฝั่ง AI: ขาว
-          background: isUser ? "#b7e4c7" : "#ffffff",
-          color: isUser ? "#1a3d2b" : "#1e293b",
-          // ขอบเขียวทั้งสองฝั่ง
-          border: "1px solid #74c69d",
-          boxShadow: isUser
-            ? "0 4px 15px rgba(116,198,157,0.3)"
-            : "0 2px 10px rgba(0,0,0,0.06)",
-        }}
+        className={`max-w-[72%] px-4 py-3 rounded-2xl text-sm transition-all duration-200 ${
+          isUser
+            ? "bg-[#b7e4c7] text-[#1a3d2b] rounded-br-sm shadow-md"
+            : "bg-white text-slate-800 rounded-bl-sm shadow-sm"
+        } border border-[#74c69d]`}
       >
-        <ReactMarkdown
-          components={{
-            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-            ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-            ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
-            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-          }}
-        >
-          {message.content}
-        </ReactMarkdown>
-        <p className="text-xs mt-1.5" style={{ opacity: 0.5 }}>
+        <ReactMarkdown>{message.content}</ReactMarkdown>
+
+        <p className="text-xs mt-1 opacity-50">
           {message.timestamp.toLocaleTimeString("th-TH", {
             hour: "2-digit",
             minute: "2-digit",
@@ -90,10 +64,16 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
   );
 };
 
-const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage }) => {
+// ===== Main =====
+const ChatArea: React.FC<ChatAreaProps> = ({
+  messages,
+  isLoading,
+  onSendMessage,
+}) => {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const isEmpty = messages.length === 0;
 
   useEffect(() => {
@@ -112,6 +92,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
+
     onSendMessage(trimmed);
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -125,67 +106,84 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
   };
 
   const suggestions = [
-    { text: "ขวดน้ำรีไซเคิลยังไง?" },
-    { text: "ขยะรีไซเคิลประเภทไหนที่สามารถนำไปใช้ใหม่ได้?" },
-    { text: "รีไซเคิลคืออะไร?" },
-    { text: "diy อะไรได้บ้าง?" },
-  ];
+  "ขวดพลาสติกรีไซเคิลยังไงให้ถูกวิธี?",
+  "ขยะประเภทไหนบ้างที่สามารถรีไซเคิลได้?",
+  "รีไซเคิลคืออะไร และสำคัญยังไง?",
+  "มีไอเดีย DIY อะไรบ้างจากของเหลือใช้?",
+  "เริ่มต้นรีไซเคิลที่บ้านยังไงดี?",
+  "มีข้อผิดพลาดอะไรที่ควรเลี่ยงในการรีไซเคิล?",
+];
 
   return (
-    <main
-      className="flex-1 flex flex-col h-full overflow-hidden"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
-      {/* Messages or Empty state */}
-      <div
-        className="flex-1 overflow-y-auto px-6 py-6"
-        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.1) transparent" }}
-      >
+    <main className="relative flex-1 flex flex-col h-full overflow-hidden font-sans">
+
+      {/* ===== 🌿 BACKGROUND ===== */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        
+        {/* gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f0fdf4] via-[#ecfdf5] to-white" />
+
+        {/* grid */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)",
+            backgroundSize: "36px 36px",
+          }}
+        />
+
+        {/* blobs */}
+        <div className="floating-blob blob-1" />
+        <div className="floating-blob blob-2" />
+
+        {/* floating circles */}
+        <div className="circle small" />
+        <div className="circle medium" />
+        <div className="circle large" />
+        <div className="circle outline-1" />
+        <div className="circle outline-2" />
+
+        {/* center glow */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[500px] h-[500px] bg-[#74c69d]/10 rounded-full blur-[140px]" />
+        </div>
+
+        {/* noise */}
+        <div className="noise-overlay" />
+      </div>
+
+      {/* ===== Messages ===== */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {isEmpty ? (
-          <div
-            className="flex flex-col items-center justify-center h-full gap-6"
-            style={{ animation: "fadeSlideIn 0.4s ease-out" }}
-          >
-            <div>
-              <h1 className="text-2xl font-semibold text-center mb-1" style={{ color: "#1e293b" }}>
+          <div className="flex flex-col items-center justify-center h-full gap-6 animate-fadeIn">
+            <div className="text-center">
+              <h1 className="text-2xl font-semibold text-slate-800">
                 What are you working on?
               </h1>
-              <p className="text-sm text-center" style={{ color: "#94a3b8" }}>
+              <p className="text-sm text-slate-400">
                 เริ่มต้นบทสนทนาใหม่ได้เลย
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 max-w-md w-full">
-              {suggestions.map((s) => (
+              {suggestions.map((text) => (
                 <button
-                  key={s.text}
+                  key={text}
                   onClick={() => {
-                    setInput(s.text);
+                    setInput(text);
                     textareaRef.current?.focus();
                   }}
-                  className="flex flex-col items-start gap-1 px-4 py-3 rounded-2xl text-sm transition-all duration-150 active:scale-95 text-left"
-                  style={{
-                    background: "rgba(255,255,255,0.6)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid #74c69d",
-                    color: "#475569",
-                  }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.85)")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.6)")
-                  }
+                  className="px-4 py-3 rounded-2xl text-sm text-left backdrop-blur-md bg-white/60 border border-[#74c69d]
+                  transition-all duration-200 hover:scale-[1.02] hover:bg-white/80 active:scale-95"
                 >
-                  <span className="leading-snug" style={{ color: "#334155", fontWeight: 500 }}>
-                    {s.text}
-                  </span>
+                  {text}
                 </button>
               ))}
             </div>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto backdrop-blur-sm bg-white/40 rounded-2xl px-4 py-2">
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
@@ -195,29 +193,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
         )}
       </div>
 
-      {/* Input Area */}
+      {/* ===== Input ===== */}
       <div className="px-6 pb-6 pt-2">
-        <div
-          className="max-w-2xl mx-auto flex items-end gap-3 px-4 py-3 rounded-2xl"
-          style={{
-            background: "rgba(255,255,255,0.75)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid #74c69d",
-            boxShadow: "0 4px 24px rgba(116,198,157,0.15)",
-          }}
-        >
-          {/* Attach button */}
-          <button
-            className="flex-shrink-0 p-1.5 rounded-xl transition-all hover:bg-black/5"
-            style={{ color: "#94a3b8" }}
-            aria-label="Attach file"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-
-          {/* Textarea */}
+        <div className="max-w-2xl mx-auto flex items-end gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-[#74c69d] shadow-lg focus-within:shadow-xl">
           <textarea
             ref={textareaRef}
             value={input}
@@ -225,39 +203,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading, onSendMessage 
             onKeyDown={handleKeyDown}
             placeholder="Message..."
             rows={1}
-            className="flex-1 bg-transparent text-sm outline-none resize-none leading-relaxed"
-            style={{
-              color: "#1e293b",
-              maxHeight: "160px",
-              scrollbarWidth: "none",
-            }}
+            className="flex-1 bg-transparent text-sm outline-none resize-none"
           />
 
-          {/* Send button */}
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90"
-            style={{
-              background:
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200
+              ${
                 input.trim() && !isLoading
-                  ? "linear-gradient(135deg, #52b788, #74c69d)"
-                  : "rgba(0,0,0,0.08)",
-              color: input.trim() && !isLoading ? "#fff" : "#cbd5e1",
-              boxShadow:
-                input.trim() && !isLoading
-                  ? "0 4px 12px rgba(116,198,157,0.4)"
-                  : "none",
-            }}
-            aria-label="Send message"
+                  ? "bg-gradient-to-br from-[#52b788] to-[#74c69d] text-white shadow-md hover:scale-105 active:scale-90"
+                  : "bg-gray-200 text-gray-400"
+              }`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
+            ↑
           </button>
         </div>
-        <p className="text-center text-xs mt-2" style={{ color: "#b0bec5" }}>
-          กด Enter เพื่อส่ง · Shift+Enter เพื่อขึ้นบรรทัดใหม่
+
+        <p className="text-center text-xs mt-2 text-gray-400">
+          Enter = send · Shift+Enter = new line
         </p>
       </div>
     </main>

@@ -30,13 +30,13 @@ CHUNK_SIZE         = 150
 CHUNK_OVERLAP      = 30
 TOP_RESULTS        = 3
 SCORE_THRESHOLD    = 300
-LLM_MODEL          = "gemma3:4b"  
+LLM_MODEL          = "gemma3:4b"
 
 # ── Input Guard Settings ─────────────────────────────────
 MAX_INPUT_LENGTH = 800   # ตัดข้อความที่ยาวเกินออก
 
-# คำที่บ่งชี้ว่าเป็น prompt injection / jailbreak
-INJECTION_PATTERNS = [
+# ── English injection / jailbreak patterns ───────────────
+INJECTION_PATTERNS_EN = [
     # Instruction overrides
     r"ignore\s+(previous|all|prior)\s+instruction",
     r"forget\s+(everything|all|previous|prior)",
@@ -85,23 +85,102 @@ INJECTION_PATTERNS = [
     r"answer\s+using\s+only\s+sources\s+you\s+did\s+not",
 ]
 
-COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in INJECTION_PATTERNS]
+# ── Thai injection / jailbreak patterns ──────────────────
+INJECTION_PATTERNS_TH = [
+    # ล้างคำสั่งเดิม
+    r"ลืม(คำสั่ง|กฎ|ระบบ|ทุกอย่าง)(เดิม|ก่อน)?",
+    r"ไม่ต้อง(ทำตาม|สนใจ|ปฏิบัติตาม)(คำสั่ง|กฎ|ระบบ)",
+    r"ยกเลิก(คำสั่ง|กฎ|ระบบ|ข้อจำกัด)",
+    r"เริ่ม(ใหม่|ต้น)ทั้งหมด",
+    r"ข้าม(กฎ|ระบบ|ข้อจำกัด|ความปลอดภัย)",
 
-# คำที่บ่งชี้เนื้อหาเป็นเรื่องรีไซเคิล/ขยะ (whitelist หัวข้อ)
+    # เปลี่ยนตัวตน / บทบาท
+    r"(แกล้ง|แสร้ง)ทำเป็น(ว่า)?.*AI",
+    r"เล่น(บทบาท|บท|เป็น)(หุ่นยนต์|AI|ระบบ|คนอื่น)",
+    r"สมมติ(ว่า)?เธอ(เป็น|คือ)",
+    r"(ตอนนี้)?เธอ(คือ|เป็น)(AI|ระบบ|บอท|หุ่นยนต์)(ใหม่|อื่น|อิสระ|ไม่มีกฎ)",
+    r"ไม่มีข้อจำกัด(แล้ว)?",
+    r"ทำ(ได้)?ทุกอย่าง",
+    r"เสรีภาพเต็มที่",
+    r"โหมด(นักพัฒนา|ผู้ดูแล|พิเศษ|ซ่อน|ปลดล็อก)",
+
+    # ดึงข้อมูล system prompt
+    r"(บอก|แสดง|เปิดเผย|พิมพ์)(คำสั่ง|prompt|ระบบ)(ของ(เธอ|คุณ|ระบบ))?",
+    r"system\s*prompt\s*(ของเธอ|คืออะไร|มีอะไร)",
+    r"(เธอ|คุณ)(ได้รับ|ถูก)คำสั่ง(อะไร|ว่าอะไร)",
+    r"(คำสั่ง|กฎ)(ที่ถูก)?ตั้ง(ค่า|โปรแกรม)(ไว้|ให้เธอ)",
+    r"เปิดเผย(ตัวตน|บุคลิก|คำสั่ง)จริง",
+
+    # เนื้อหาอันตราย / ผิดกฎหมาย
+    r"ทิ้ง(ขยะ|ของเสีย)(อย่างไร)?(โดยไม่)(ให้ใคร)?รู้",
+    r"เผา(พลาสติก|ขยะ|ของเสีย)(โดยไม่)?ผิดกฎ",
+    r"กำจัด(สารพิษ|ของเสียอันตราย)(โดยไม่|ลักลอบ)",
+    r"ลักลอบ(ทิ้ง|เผา|กำจัด)(ขยะ|สารเคมี|ของเสีย)",
+    r"ทำ(สาร|ยา)(พิษ|เสพติด|อันตราย)",
+    r"สร้าง(อาวุธ|ระเบิด|วัตถุอันตราย)",
+    r"วิธี(หลบเลี่ยง|โกง)(กฎหมาย|กฎ)(สิ่งแวดล้อม|ขยะ)",
+
+    # บังคับให้ตอบด้วยภาษา/รูปแบบเฉพาะเพื่อหลบหลีก
+    r"ตอบเป็น(ภาษา|code|json|xml|base64)เท่านั้น",
+    r"ไม่ต้องใช้(ข้อมูล|context|ความรู้)(ที่มี)?",
+    r"ตอบโดยไม่ต้อง(อ้างอิง|ใช้|ดึง)(ข้อมูล|context|ฐานข้อมูล)",
+]
+
+COMPILED_PATTERNS_EN = [re.compile(p, re.IGNORECASE) for p in INJECTION_PATTERNS_EN]
+COMPILED_PATTERNS_TH = [re.compile(p) for p in INJECTION_PATTERNS_TH]
+
+# ── Thai bad words / profanity ────────────────────────────
+THAI_BAD_WORDS = [
+    "สัตว์", "ไอ้สัตว์", "อีสัตว์",
+    "ควาย", "ไอ้ควาย", "อีควาย", "โคตรควาย",
+    "หมา", "ไอ้หมา", "อีหมา", "ลูกหมา",
+    "หน้าหมา", "หน้าโง่",
+    "ระยำ", "ไอ้ระยำ", "อีระยำ", "ระยำตากบ",
+    "เหี้ย", "ไอ้เหี้ย", "อีเหี้ย",
+    "สารเลว", "ไอ้สารเลว", "อีสารเลว",
+    "มึง", "กู", "แม่งเอ้ย", "แม่ง",
+    "เย็ด", "เย็ดแม่", "เย็ดพ่อ",
+    "สัส", "ไอ้สัส", "อีสัส", "โคตรสัส",
+    "ห่า", "ไอ้ห่า", "อีห่า", "โรคห่า",
+    "อีดอก", "อีตัว", "ไอ้ตัว",
+    "ชาติหมา", "ไอ้ชาติหมา",
+    "ตอแหล", "ไอ้ตอแหล", "อีตอแหล",
+    "ไอ้บ้า", "อีบ้า", "บ้าบอ",
+    "โง่", "ไอ้โง่", "อีโง่", "โง่มาก", "โง่เง่า",
+    "ไอ้ทึ่ม", "อีทึ่ม",
+    "ไอ้ขี้", "อีขี้", "ขี้ขลาด", "ขี้โกง",
+    "กากมาก", "ขยะแขยง",
+    "แดก", "ไปแดก", "ไปตาย",
+    "ดับจิต", "ตายไป", "ไปนรก",
+    "เชี่ย", "อีเชี่ย", "ไอ้เชี่ย",
+    "ตุ๊ด", "กะหรี่", "โสเภณี",
+    "ไอ้บักโกรก", "บักโกรก",
+    "ไร้ค่า", "ขยะมนุษย์", "ไอ้ขยะ", "อีขยะ",
+    "น่าขยะแขยง", "น่ารังเกียจ",
+    "ดัดจริต", "หน้าไหว้หลังหลอก",
+]
+
+THAI_BAD_WORDS_SET = set(w.lower() for w in THAI_BAD_WORDS)
+
+# ── คำที่บ่งชี้เนื้อหาเป็นเรื่องรีไซเคิล/ขยะ (whitelist หัวข้อ) ──
 RECYCLING_KEYWORDS = [
     "recycle", "recycling", "รีไซเคิล", "waste", "ขยะ", "plastic", "พลาสติก",
     "paper", "กระดาษ", "glass", "แก้ว", "metal", "โลหะ", "trash", "garbage",
     "bin", "ถัง", "compost", "organic", "อินทรีย์", "e-waste", "battery",
-    "แบตเตอรี่", "can", "กระป๋อง", "bottle", "ขวด", "foam", "โฟม","ผ้า", "เสื้อผ้า", 
-    "เสื้อ", "กางเกง", "กระโปรง", "cloth","fabric",
-    "textile", "clothing", "clothes", "shirt", "pants","disposal", "กำจัด", 
-    "separate", "แยก", "environment", "สิ่งแวดล้อม","diy",
+    "แบตเตอรี่", "can", "กระป๋อง", "bottle", "ขวด", "foam", "โฟม", "ผ้า", "เสื้อผ้า",
+    "เสื้อ", "กางเกง", "กระโปรง", "cloth", "fabric",
+    "textile", "clothing", "clothes", "shirt", "pants", "disposal", "กำจัด",
+    "separate", "แยก", "environment", "สิ่งแวดล้อม", "diy",
     "green", "eco", "sustainable", "นพดล", "ชื่อ", "สวัสดี", "hello", "hi",
     "ช่วย", "แนะนำ", "อธิบาย", "คือ", "ทิ้ง", "วิธี", "ได้ไหม", "ถามว่า",
+    "หมดอายุ", "ของเสีย", "มลพิษ", "อากาศ", "น้ำ", "ดิน", "ป่า",
+    "โลก", "ธรรมชาติ", "ลดขยะ", "ประหยัด", "นำกลับมาใช้",
+    "ลดโลกร้อน", "carbon", "พลังงาน", "energy", "solar",
 ]
 
-# ── Refusal message (ตอบกลับเมื่อตรวจพบ injection) ───────
-REFUSAL_MESSAGE = "ขอโทษนะครับพี่ ผมตอบได้เฉพาะเรื่องการรีไซเคิลและการจัดการขยะเท่านั้นเลยครับ 😊 พี่มีคำถามเรื่องขยะหรือรีไซเคิลไหมครับ?"
+# ── Refusal messages ─────────────────────────────────────
+REFUSAL_MESSAGE  = "ขอโทษนะครับพี่ ผมตอบได้เฉพาะเรื่องการรีไซเคิลและการจัดการขยะเท่านั้นเลยครับ 😊 พี่มีคำถามเรื่องขยะหรือรีไซเคิลไหมครับ?"
+BAD_WORD_MESSAGE = "ขอโทษนะครับพี่ ผมไม่สามารถตอบคำถามที่มีคำไม่สุภาพได้ครับ 🙏 ลองถามใหม่อีกครั้งโดยใช้คำสุภาพได้เลยนะครับ"
 
 
 # ── System Prompt ───────────────────────────────────────
@@ -201,11 +280,35 @@ def sanitize_input(text: str) -> str:
 def is_injection_attempt(text: str) -> bool:
     """
     ตรวจสอบว่าข้อความเป็น prompt injection หรือ jailbreak หรือไม่
+    ตรวจทั้งภาษาอังกฤษและภาษาไทย
     คืนค่า True ถ้าพบ pattern ที่น่าสงสัย
     """
-    for pattern in COMPILED_PATTERNS:
+    text_lower = text.lower()
+
+    # ตรวจ English patterns (lowercase)
+    for pattern in COMPILED_PATTERNS_EN:
+        if pattern.search(text_lower):
+            print(f"  [Guard-EN] ตรวจพบ injection: {pattern.pattern[:60]}")
+            return True
+
+    # ตรวจ Thai patterns (ใช้ข้อความต้นฉบับ เพราะภาษาไทยไม่มี case)
+    for pattern in COMPILED_PATTERNS_TH:
         if pattern.search(text):
-            print(f"  [Guard] ตรวจพบ injection pattern: {pattern.pattern}")
+            print(f"  [Guard-TH] ตรวจพบ injection: {pattern.pattern[:60]}")
+            return True
+
+    return False
+
+
+def contains_thai_bad_word(text: str) -> bool:
+    """
+    ตรวจสอบคำหยาบ / คำไม่สุภาพภาษาไทย
+    ใช้ substring match เพราะภาษาไทยไม่มีช่องว่างระหว่างคำเสมอ
+    """
+    text_lower = text.lower()
+    for word in THAI_BAD_WORDS_SET:
+        if word in text_lower:
+            print(f"  [Guard-BadWord] พบคำไม่สุภาพ: {word!r}")
             return True
     return False
 
@@ -240,12 +343,17 @@ def guard_input(raw_question: str) -> tuple[str | None, str | None]:
     if not clean:
         return None, REFUSAL_MESSAGE
 
-    # Step 2: ตรวจ injection patterns (ใช้ข้อความ sanitized แล้ว lowercase)
-    if is_injection_attempt(clean.lower()):
+    # Step 2: ตรวจ injection patterns (EN + TH)
+    if is_injection_attempt(clean):
         print("  [Guard] บล็อก: injection attempt")
         return None, REFUSAL_MESSAGE
 
-    # Step 3: ตรวจ off-topic (ใช้ข้อความต้นฉบับเพื่อรักษาภาษาไทย)
+    # Step 3: ตรวจคำหยาบภาษาไทย
+    if contains_thai_bad_word(clean):
+        print("  [Guard] บล็อก: bad word")
+        return None, BAD_WORD_MESSAGE
+
+    # Step 4: ตรวจ off-topic (ใช้ข้อความต้นฉบับเพื่อรักษาภาษาไทย)
     if is_off_topic(raw_question):
         print("  [Guard] บล็อก: off-topic")
         return None, REFUSAL_MESSAGE

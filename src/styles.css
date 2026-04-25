@@ -257,3 +257,125 @@ a {
     transform: translateY(0);
   }
 }
+/* animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.25s ease-out;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* blobs */
+.floating-blob {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+}
+
+.blob-1 {
+  top: 10%;
+  left: 15%;
+  background: rgba(116, 198, 157, 0.35);
+  animation: float 18s ease-in-out infinite;
+}
+
+.blob-2 {
+  bottom: 15%;
+  right: 10%;
+  background: rgba(82, 183, 136, 0.25);
+  animation: float 22s ease-in-out infinite;
+}
+
+/* circles */
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: drift 25s linear infinite;
+  opacity: 0.25;
+}
+
+.circle.small {
+  width: 80px;
+  height: 80px;
+  background: rgba(116, 198, 157, 0.25);
+  top: 20%;
+  left: 70%;
+}
+
+.circle.medium {
+  width: 140px;
+  height: 140px;
+  background: rgba(82, 183, 136, 0.2);
+  bottom: 25%;
+  left: 10%;
+  animation-duration: 30s;
+}
+
+.circle.large {
+  width: 220px;
+  height: 220px;
+  background: rgba(116, 198, 157, 0.15);
+  top: 60%;
+  right: 15%;
+  animation-duration: 35s;
+}
+
+.circle.outline-1 {
+  width: 180px;
+  height: 180px;
+  border: 1px solid rgba(116, 198, 157, 0.25);
+  top: 10%;
+  left: 25%;
+  animation-duration: 40s;
+}
+
+.circle.outline-2 {
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgba(82, 183, 136, 0.2);
+  bottom: 5%;
+  right: 30%;
+  animation-duration: 45s;
+}
+
+/* motion */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-35px); }
+}
+
+@keyframes drift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(15px, -30px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* noise */
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("https://www.transparenttextures.com/patterns/noise.png");
+}
